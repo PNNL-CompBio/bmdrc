@@ -26,23 +26,23 @@ are assumed to be endpoints with their respective values.
 
 *morpho_filepath:* If the input data is not morphological, users may still specify the morphological filepath to filter out specific cases. See "endpoints_to_filter" parameter.
 
-*endpoints_to_filter:* A list of endpoints to filter out everyone. Default is "DNC" (do not count), "DNC_", "MORT" (any mortality), and "MO24" (mortality at 24 hours) written as 
+*endpoints_to_filter:* A list of endpoints to filter out everywhere. Default is "DNC" (do not count), "DNC_", "MORT" (any mortality), and "MO24" (mortality at 24 hours) written as 
 `["DNC", "DNC_", "MORT", "MO24"]`  
 
 *endpoints_to_combine:* A dictionary of new endpoints that can be calculated from existing endpoints. For example `{'ANY': ['MO24','DP24','SM24']}`. Default is None.
 
 *bmds:* A list of numeric BMD values to calculate. Even if this parameter is set to None, BMD10 will always be calculated. For example, `[30, 50]` will calculate BMD10, BMD30, and BMD50. 
 
-*minimum_measurement_filter:* The minimum number of measurements to calculate a benchmark dose curve. Default is 3. Users cannot specify a value less than 2. For more details on filters, ![see]
-(https://www.nature.com/articles/s41597-023-02021-5)
+*minimum_measurement_filter:* The minimum number of measurements to calculate a benchmark dose curve. Default is 3. Users cannot specify a value less than 2. For more details on filters, 
+[see here](https://www.nature.com/articles/s41597-023-02021-5)
 
-*negative_control_filter:* The maximum percentage response in the controls. Higher percentages are filtered. Default is 50, which is 50%. For more details on filters, ![see]
-(https://www.nature.com/articles/s41597-023-02021-5)
+*negative_control_filter:* The maximum percentage response in the controls. Higher percentages are filtered. Default is 50, which is 50%. For more details on filters, 
+[see here](https://www.nature.com/articles/s41597-023-02021-5)
 
 *correlation_filter:* Response must increase with dose. A spearman correlation metric (ranges from -1 to 1) is calculated and curves that fall below the specified threshold are filtered out. Default is 0.2 
-For more details on filters, ![see](https://www.nature.com/articles/s41597-023-02021-5)
+For more details on filters, [see here](https://www.nature.com/articles/s41597-023-02021-5)
 
-*equivalent_fit_threshold:* The AIC value threshold for an equivalent fit. Default is 2. ![See](https://doi.org/10.1177/0049124104268644) 
+*equivalent_fit_threshold:* The AIC value threshold for an equivalent fit. Default is 2. [See here](https://doi.org/10.1177/0049124104268644) 
 
 *report_options:* A list to specify report information. Default is "missingness" and "response curves" written as `["missingness", "response curves"]`
 
@@ -57,7 +57,7 @@ model with the smallest BMD10 estimation error values are then considered the op
 
 There are a few additional functions besides the main `bmdrc()` function that can be used to extract additional information. Brief descriptions of these functions are listed below:
 
-**predict_response:** Users interested in extracting curve information can supply the "benchmark" file, a string with the endpoint to calculate, and a list of dose values (x variables) to predict on.
+**predict_response:** Users interested in predicting response curves can supply the "benchmark" file, a string with the endpoint to calculate, and a list of dose values (x variables) to predict on.
 
 # Example Input Data
 
