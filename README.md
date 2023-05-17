@@ -16,13 +16,19 @@ and an html report containing information on how much data was filtered and why,
 
 *filepath:* A path to a .csv or .txt file (see example input data for acceptable choices)
 
-*datatype:* Specify which of the four input data files the data is
+*datatype:* Specify input data type. Acceptable options are "morphological" (dichotomous), "lpr" (light photometer response), "movement" (behavorial), and "omics" (transcriptomics, metabolomics, lipidomics,
+or proteomics)
+
+**Conditionally Required Parameters**
+
+*omics_metadata:* If the datatype is "omics", this file requires meta information about the dosage, and the column names in the file in the filepath that contain the fold change values and the p-values. 
+The required column names in omics_metadata are "dosage", "foldchange", and "pvalue". 
+
+*format:* If the datatype is "morphological", specify whether the data is written in "long" or "wide" format. The default is "long". If in long format, the following columns are required: 
+'chemical.id', 'conc', 'plate.id', 'well', 'endpoint', and 'value'. If the data is in wide format, the following columns are required: 'chemical.id', 'conc', 'plate.id', and 'well'. The remaining columns 
+are assumed to be endpoints with their respective values. 
 
 **Optional Parameters**
-
-*format:* Specify whether the data is written in "long" or "wide" format. The default is "long". If in long format, the following columns are required: 'chemical.id', 'conc', 
-'plate.id', 'well', 'endpoint', and 'value'. If the data is in wide format, the following columns are required: 'chemical.id', 'conc', 'plate.id', and 'well'. The remaining columns 
-are assumed to be endpoints with their respective values. 
 
 *morpho_filepath:* If the input data is not morphological, users may still specify the morphological filepath to filter out specific cases. See "endpoints_to_filter" parameter.
 
