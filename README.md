@@ -52,7 +52,7 @@ For more details on filters, [see here](https://www.nature.com/articles/s41597-0
 
 *report_options:* A list to specify report information. Default is "missingness" and "response curves" written as `["missingness", "response curves"]`
 
-*outputs:* A list to specify outputs. Default is "benchmark", "model fits", and "report" written as `["benchmark", "model fits", "report"]`
+*outputs:* A list to specify outputs. Default is "benchmark", "model fits", and "report" written as `["benchmark", "model fits", "fitted curve", "report"]`
 
 # Fit Selection
 
