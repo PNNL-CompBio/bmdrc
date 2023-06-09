@@ -6,7 +6,7 @@ __author__ = "David Degnan"
 
 class BinaryClass(object):
     '''
-    Generates a binary class object where input values are either a 0 or a 1
+    Generates a binary class object where input values are either a 0, 1, or NA.
 
     df: (pandas DataFrame) A dataframe containing columns title chemical, 
     plate, well, concentration, endpoint (long format only), value (long format only).
