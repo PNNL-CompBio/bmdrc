@@ -1,5 +1,6 @@
 import operator
 import pandas as pd
+import numpy as np
 
 __author__ = "David Degnan"
 
@@ -35,15 +36,15 @@ class BinaryClass(object):
     '''
 
     # Define the input checking functions 
-    def __init__(self, df, chemical, plate, well, concentration, endpoint, value): #format):
+    def __init__(self, df, chemical, plate, well, concentration, endpoint = None, value = None, format = "long"):
         self.df = df
         self.chemical = chemical
         self.plate = plate
         self.well = well
         self.concentration = concentration
+        self.format = format
         self.endpoint = endpoint
         self.value = value
-        #self.format = format
 
     # Set property returning functions 
     df = property(operator.attrgetter('_df'))
@@ -51,11 +52,11 @@ class BinaryClass(object):
     plate = property(operator.attrgetter('_plate'))
     well = property(operator.attrgetter('_well'))
     concentration = property(operator.attrgetter('_concentration'))
+    format = property(operator.attrgetter('_format'))
     endpoint = property(operator.attrgetter('_endpoint'))
     value = property(operator.attrgetter('_value'))
-    #format = property(operator.attrgetter('_format'))
 
-    # Now, ensure each input is correct 
+    # Now, ensure all other input is correct 
 
     @df.setter
     def df(self, theDF):
@@ -109,24 +110,44 @@ class BinaryClass(object):
             raise Exception(concentrationname + " is not in the column names of df")
         self._df[concentrationname] = pd.to_numeric(self._df[concentrationname])
         self._concentration = concentrationname
+
+    # The format variable by default is long. If the data is wide, it needs to be
+    # pivoted.
+    @format.setter
+    def format(self, long_or_wide):
+        if not (long_or_wide == "wide" or long_or_wide == "long"):
+            raise Exception("format must be 'long' or 'wide'.")
+        if long_or_wide == "wide":
+            self._df = self._df.melt(id_vars = [self._chemical, self._concentration, self._plate, self._well], var_name = "endpoint")
+        self._format = long_or_wide
         
     @endpoint.setter
-    def endpoint(self, endpoints):
-    #    if not endpoints: 
-    #        raise Exception("endpoint cannot be empty. Please provide a list \
-    #                        of strings representing each endpoint.")
-    #    if not isinstance(endpoints, str):
-    #        raise Exception("endpoint must be a list of strings.")
-        self._endpoint = endpoints
-        
+    def endpoint(self, endpointname):
+        if self._format == "long":
+            if not endpointname: 
+                raise Exception("endpoint cannot be empty. Please enter the column name for \
+                                the endpoint.")
+            if not isinstance(endpointname, str):
+                raise Exception("endpoint must be a name of a column in df.")
+            if not endpointname in self._df.columns:
+                raise Exception(endpointname + " is not in the column names of df")
+            self._endpoint = endpointname
+        else:
+            self._endpoint = "endpoint"
+
         
     @value.setter
-    def value(self, values):
-    #    if not values: 
-     #       raise Exception("value cannot be empty. Please provide a list \
-     #                       of zeroes and ones representing whether a condition \
-     #                       is absent or present, respectively.")
-     #   if all(val == 0 or val == 1 for val in values):
-     #       raise Exception("value must be a list of zeroes or ones indicating \
-     #                       whether a condition is absent or present, respectively.")
-        self._value = values
+    def value(self, valuename):
+        if self._format == "value":
+            if not valuename: 
+                raise Exception("value cannot be empty. Please enter the column name for \
+                                    the value.")
+            if not isinstance(valuename, str):
+                raise Exception("value must be a name of a column in df.")
+            if not valuename in self._df.columns:
+                raise Exception(valuename + " is not in the column names of df")
+            if not np.isin(self._df["value"].unique(), [0,1]).all():
+                raise Exception("The value column must be comprised of only zeroes and ones.")
+            self._value = valuename
+        else:
+            self._value = "value"
