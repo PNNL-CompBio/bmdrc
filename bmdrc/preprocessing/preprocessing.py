@@ -1,4 +1,5 @@
 
+import pandas as pd
 from bmdrc.input_data_classes.BinaryClass import BinaryClass as BC
 
 __author__ = "David Degnan"
@@ -36,4 +37,23 @@ def combine_and_create_new_endpoints(BinaryClass, EndpointDictionary):
     if not all([item in bc_unique_endpoints for item in dict_unique_endpoints]):
         raise Exception("All endpoints in EndpointDictionary must be in the BinaryClass endpoints.")
     
+    #########################
+    ## CREATE NEW ENDPOINT ##
+    #########################
+
+    # Define a small function to create new endpoints
+    def new_endpoint(endpoints, new_name):
+        sub_df = df_morph[df_morph["endpoint"].isin(endpoints)]
+        sub_df["endpoint"] = new_name
+        sub_df = sub_df.groupby(by = ["chemical.id", "conc", "plate.id", "well", "endpoint"], as_index = False).sum()
+        sub_df['value'].values[sub_df['value'] > 1] = 1 
+        return(sub_df)
+
+    # Iterate through each dictionary entry 
+    for NewEndpoint, ExistingEndpoints in EndpointDictionary:
+        pd.concat([BinaryClass.df, new_endpoint(NewEndpoint, ExistingEndpoints)])
+
+
     
+        
+
