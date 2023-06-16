@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from bmdrc.input_data_classes.BinaryClass import BinaryClass
+from bmdrc.input_data_classes.BinaryClass import BinaryClass as BC
 import pandas as pd
 
 ####################
@@ -10,7 +10,8 @@ import pandas as pd
 # Wide Test
 morpho_example_wide = pd.read_csv("/Users/degn400/Git_Repos/bmdrc/data/Binary_Morphology_Wide.csv")
 
-Wide = BinaryClass(
+
+Wide = BC(
     df = morpho_example_wide,
     chemical = "chemical.id",
     plate = "plate.id",
@@ -28,13 +29,18 @@ Wide.concentration
 Wide.endpoint
 Wide.value
 
+# Combine to create new endpoints
+EndpointDictionary = {"ANY24": ["MO24", "DP24", "SM24"], 
+                      "FACE": ["JAW_", "SNOU", "EYE_"]}
+
+
 ####################
 ## TEST LONG DATA ##
 ####################
 
 morpho_example_long = pd.read_csv("/Users/degn400/Git_Repos/bmdrc/data/Binary_Morphology_Long.csv")
 
-Long = BinaryClass(
+Long = BC(
     df = morpho_example_long,
     chemical = "chemical.id",
     plate = "plate.id",

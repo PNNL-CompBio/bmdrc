@@ -1,7 +1,9 @@
 
+from bmdrc.input_data_classes.BinaryClass import BinaryClass as BC
+
 __author__ = "David Degnan"
 
-def combine_endpoints(BinaryClass, EndpointDictionary):
+def combine_and_create_new_endpoints(BinaryClass, EndpointDictionary):
     '''
     Combine endpoints and create new endpoints for only the BinaryClass datatype.
     For example, multiple 24 hour endpoints can be combined to create an "Any 24" endpoint.
@@ -9,9 +11,29 @@ def combine_endpoints(BinaryClass, EndpointDictionary):
     in any of the other endpoints, the resulting endpoint is a 1. Otherwise, it is 
     0 unless the other endpoints are all NA. Then the final value is NA.
     
-    BinaryClass: (bmdrc BinaryClass object) 
+    BinaryClass: (bmdrc BinaryClass object) Build with the BinaryClass function
 
     EndpointDictionary: (dictionary) A dictionary where names are the new endpoint, and values are a list
-    containing the endpoints to calculate these values from.
+    containing the endpoints to calculate these values from. 
 
     '''
+
+    ############################
+    ## CHECK INPUT PARAMETERS ##
+    ############################
+
+    # Assert that BinaryClass is the correct object type
+    if not isinstance(BinaryClass, BC):
+        raise Exception("BinaryClass is not a BinaryClass object.")
+    
+    # Assert that EndpointDictionary is a Dictionary
+    if not isinstance(EndpointDictionary, dict):
+        raise Exception("EndpointDictionary is not a dict object.")
+    
+    # Assert that all values in the dictionary are endpoints in the BinaryClass object
+    dict_unique_endpoints = list(set(sum(list(EndpointDictionary.values()), [])))
+    bc_unique_endpoints = list(set(BinaryClass.df["endpoint"].tolist()))
+    if not all([item in bc_unique_endpoints for item in dict_unique_endpoints]):
+        raise Exception("All endpoints in EndpointDictionary must be in the BinaryClass endpoints.")
+    
+    
