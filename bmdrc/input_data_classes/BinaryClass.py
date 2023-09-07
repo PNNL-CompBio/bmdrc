@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from abc import abstractmethod
 
-from ..preprocessing import endpoint_combine
+from ..preprocessing import endpoint_combine, remove_well 
 
 __author__ = "David Degnan"
 
@@ -11,6 +11,10 @@ class DataClass(object):
     '''
     An abstract class for all bmdrc accepted datatypes
     '''
+
+    @abstractmethod
+    def set_well_to_na(self, endpoint_name, endpoint_value):
+        remove_well(self, endpoint_name, endpoint_value)
 
     @abstractmethod
     def combine_and_create_new_endpoints(self, endpoint_dict):

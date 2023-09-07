@@ -1,7 +1,48 @@
 import pandas as pd
-import ipdb
+import numpy as np
 
 __author__ = "David Degnan"
+
+def remove_well(self, endpoint_name, endpoint_value, except_endpoints = None):
+    '''
+    Remove any wells where a specific endpoint has a specific value. 
+    Wells are set to NA.
+
+    endpoint_name: (list - string) list of endpoints to remove 
+
+    endpoint_value: (numeric) specific value or list of values that the endpoint needs to have to remove the well
+
+    except_endpoints: (list - string) list of endpoints that should not have their wells affected
+    '''
+
+    ############################
+    ## CHECK INPUT PARAMETERS ##
+    ############################
+
+    # Iterate through each endpoint to confirm it is a valid choice 
+    for endpoint in endpoint_name:
+        if endpoint in self.df[self.endpoint].unique() is False:
+            raise Exception(endpoint + " is not in an endpoint in the DataClass object")
+        
+    # Convert endpoint value to a list
+    if isinstance(endpoint_value, list) == False:
+        endpoint_value = list(endpoint_value)
+
+    # Confirm the value exists for at least one endpoint
+    if any(self.df[self.df[self.endpoint].isin(endpoint_name)][self.value].isin(endpoint_value)) == False:
+        raise Exception("None of the provided endpoint_names contain the provided endpoint_value")
+    
+    # Iterate through each except endpoint to confirm they are valid choices
+    if except_endpoints is not None:
+        for endpoint in except_endpoints:
+            if endpoint in self.df[self.endpoint].unique() is False:
+                raise Exception(endpoint + " is not in an endpoint in the DataClass object")
+            
+    ####################################
+    ## SET WELLS TO NA TO REMOVE THEM ##
+    ####################################
+
+    # Get wells to remove 
 
 def endpoint_combine(self, endpoint_dict):
     '''
@@ -10,9 +51,6 @@ def endpoint_combine(self, endpoint_dict):
     New endpoints are created with a binary or statement, meaning that if there is a 1 
     in any of the other endpoints, the resulting endpoint is a 1. Otherwise, it is 
     0 unless the other endpoints are all NA. Then the final value is NA.
-    
-    dataclass: (bmdrc dataclass object) Build with the DataClass function. Acceptable options are
-    BinaryClass, LPRClass, and MovementClass
 
     endpoint_dict: (dictionary) A dictionary where names are the new endpoint, and values are a list
     containing the endpoints to calculate these values from. 
@@ -53,8 +91,23 @@ def endpoint_combine(self, endpoint_dict):
         else:
             self.df = pd.concat([self.df, new_endpoint(NewEndpoint, endpoint_dict[NewEndpoint])])
 
+    ################################
+    ## ADD ATTRIBUTES FOR REPORTS ##
+    ################################
 
-def remove_well
+    # Make a dataframe of new attributes 
+
+
+    # Add a combination attributes
+    if hasattr(self, "report_combination"):
+        self.report_combination = self.report_combination 
+
+
+
+
+    
+
+
 
 
     
