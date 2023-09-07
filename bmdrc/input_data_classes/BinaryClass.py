@@ -1,10 +1,23 @@
 import operator
 import pandas as pd
 import numpy as np
+from abc import abstractmethod
+
+from ..preprocessing import endpoint_combine
 
 __author__ = "David Degnan"
 
-class BinaryClass(object):
+class DataClass(object):
+    '''
+    An abstract class for all bmdrc accepted datatypes
+    '''
+
+    @abstractmethod
+    def combine_and_create_new_endpoints(self, endpoint_dict):
+        endpoint_combine(self, endpoint_dict)
+
+
+class BinaryClass(DataClass):
     '''
     Generates a binary class object where input values are either a 0, 1, or NA.
 
@@ -56,7 +69,9 @@ class BinaryClass(object):
     endpoint = property(operator.attrgetter('_endpoint'))
     value = property(operator.attrgetter('_value'))
 
-    # Now, ensure all other input is correct 
+    ################
+    ## SET INPUTS ##
+    ################
 
     @df.setter
     def df(self, theDF):
@@ -151,3 +166,6 @@ class BinaryClass(object):
             self._value = valuename
         else:
             self._value = "value"
+
+
+    
