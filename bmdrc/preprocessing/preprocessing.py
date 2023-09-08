@@ -1,10 +1,9 @@
 import pandas as pd
 import numpy as np
-import ipdb
 
 __author__ = "David Degnan"
 
-def remove_well(self, endpoint_name, endpoint_value, except_endpoint = None):
+def well_to_na(self, endpoint_name, endpoint_value, except_endpoint = None):
     '''
     Remove any wells where a specific endpoint has a specific value. 
     Wells are set to NA.
