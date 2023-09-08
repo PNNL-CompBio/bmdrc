@@ -11,7 +11,7 @@ class DataClass(object):
     '''
     An abstract class for all bmdrc accepted datatypes
     '''
-
+    
     @abstractmethod
     def set_well_to_na(self, endpoint_name, endpoint_value):
         remove_well(self, endpoint_name, endpoint_value)
@@ -62,6 +62,7 @@ class BinaryClass(DataClass):
         self.format = format
         self.endpoint = endpoint
         self.value = value
+        self.unacceptable = ["bmdrc.Well.ID"]
 
     # Set property returning functions 
     df = property(operator.attrgetter('_df'))
@@ -72,6 +73,7 @@ class BinaryClass(DataClass):
     format = property(operator.attrgetter('_format'))
     endpoint = property(operator.attrgetter('_endpoint'))
     value = property(operator.attrgetter('_value'))
+    unacceptable = ["bmdrc.Well.ID"]
 
     ################
     ## SET INPUTS ##
@@ -94,6 +96,8 @@ class BinaryClass(DataClass):
             raise Exception("chemical must be a name of a column in df.")
         if not chemicalname in self._df.columns:
             raise Exception(chemicalname + "is not in the column names of df")
+        if chemicalname in self.unacceptable:
+            raise Exception(chemicalname + "is not a permitted name. Please rename this column.")
         self._chemical = chemicalname
 
     @plate.setter
@@ -105,6 +109,8 @@ class BinaryClass(DataClass):
             raise Exception("plate must be a name of a column in df.")
         if not platename in self._df.columns:
             raise Exception(platename + " is not in the column names of df")
+        if platename in self.unacceptable:
+            raise Exception(platename + "is not a permitted name. Please rename this column.")
         self._plate = platename
         
     @well.setter
@@ -116,6 +122,8 @@ class BinaryClass(DataClass):
             raise Exception("well must be a name of a column in df.")
         if not wellname in self._df.columns:
             raise Exception(wellname + " is not in the column names of df")
+        if wellname in self.unacceptable:
+            raise Exception(wellname + "is not a permitted name. Please rename this column.")
         self._well = wellname
         
     @concentration.setter
@@ -127,6 +135,8 @@ class BinaryClass(DataClass):
             raise Exception("concentration must be a name of a column in df.")
         if not concentrationname in self._df.columns:
             raise Exception(concentrationname + " is not in the column names of df")
+        if concentrationname in self.unacceptable:
+            raise Exception(concentrationname + "is not a permitted name. Please rename this column.")
         self._df[concentrationname] = pd.to_numeric(self._df[concentrationname])
         self._concentration = concentrationname
 
@@ -150,6 +160,8 @@ class BinaryClass(DataClass):
                 raise Exception("endpoint must be a name of a column in df.")
             if not endpointname in self._df.columns:
                 raise Exception(endpointname + " is not in the column names of df")
+            if endpointname in self.unacceptable:
+                raise Exception(endpointname + "is not a permitted name. Please rename this column.")
             self._endpoint = endpointname
         else:
             self._endpoint = "endpoint"
@@ -165,11 +177,15 @@ class BinaryClass(DataClass):
                 raise Exception("value must be a name of a column in df.")
             if not valuename in self._df.columns:
                 raise Exception(valuename + " is not in the column names of df")
+            if valuename in self.unacceptable:
+                raise Exception(valuename + "is not a permitted name. Please rename this column.")
             if not np.isin(self._df["value"].unique(), [0,1]).all():
                 raise Exception("The value column must be comprised of only zeroes and ones.")
             self._value = valuename
         else:
             self._value = "value"
+
+    
 
 
     

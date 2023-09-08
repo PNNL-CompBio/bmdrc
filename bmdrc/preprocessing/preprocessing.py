@@ -4,7 +4,7 @@ import ipdb
 
 __author__ = "David Degnan"
 
-def remove_well(self, endpoint_name, endpoint_value, except_endpoints = None):
+def remove_well(self, endpoint_name, endpoint_value, except_endpoint = None):
     '''
     Remove any wells where a specific endpoint has a specific value. 
     Wells are set to NA.
@@ -13,7 +13,7 @@ def remove_well(self, endpoint_name, endpoint_value, except_endpoints = None):
 
     endpoint_value: (numeric) specific value or list of values that the endpoint needs to have to remove the well
 
-    except_endpoints: (list - string) list of endpoints that should not have their wells affected
+    except_endpoint: (list - string) list of endpoints that should not have their wells affected
     '''
 
     ############################
@@ -34,8 +34,8 @@ def remove_well(self, endpoint_name, endpoint_value, except_endpoints = None):
         raise Exception("None of the provided endpoint_names contain the provided endpoint_value")
     
     # Iterate through each except endpoint to confirm they are valid choices
-    if except_endpoints is not None:
-        for endpoint in except_endpoints:
+    if except_endpoint is not None:
+        for endpoint in except_endpoint:
             if endpoint in self.df[self.endpoint].unique() is False:
                 raise Exception(endpoint + " is not in an endpoint in the DataClass object")
             
@@ -43,7 +43,34 @@ def remove_well(self, endpoint_name, endpoint_value, except_endpoints = None):
     ## SET WELLS TO NA TO REMOVE THEM ##
     ####################################
 
-    # Get wells to remove 
+    # If it hasn't been made yet, make the bmdrc.Well.ID column
+    if "bmdrc.Well.ID" not in self.df.columns.tolist():
+        self.df["bmdrc.Well.ID"] = self.df[self.chemical].astype(str) + " " + self.df[self.concentration].astype(str) + " " + self.df[self.plate].astype(str) + " " + self.df[self.well].astype(str)
+    
+    # List wells to remove
+    wells_rm = self.df[(self.df[self.endpoint].isin(endpoint_name)) & (self.df[self.value].isin(endpoint_value))]["bmdrc.Well.ID"]
+
+    # Pull all endpoints
+    all_endpoints = self.df[self.endpoint].unique().tolist()
+
+    # Remove specific rows if applicable 
+    if except_endpoint is not None:
+        all_endpoints = [end for end in all_endpoints if end not in except_endpoint]
+
+    # Set values to NA
+    self.df[self.df["bmdrc.Well.ID"].isin(wells_rm)][self.value] = np.nan
+
+    ################################
+    ## ADD ATTRIBUTES FOR REPORTS ##
+    ################################
+
+    # Only add new inputs to the dictionary. 
+    if hasattr(self, "report_well_removal"):
+        self.report_well_removal.append([endpoint_name, endpoint_value, except_endpoint])
+    else:
+        self.report_combination = [endpoint_name, endpoint_value, except_endpoint]
+
+
 
 def endpoint_combine(self, endpoint_dict):
     '''
