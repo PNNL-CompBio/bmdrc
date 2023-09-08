@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import ipdb
 
 __author__ = "David Degnan"
 
@@ -95,12 +96,12 @@ def endpoint_combine(self, endpoint_dict):
     ## ADD ATTRIBUTES FOR REPORTS ##
     ################################
 
-    # Make a dataframe of new attributes 
-
-
-    # Add a combination attributes
+    # Only add new inputs to the dictionary. 
     if hasattr(self, "report_combination"):
-        self.report_combination = self.report_combination 
+        endpoint_dict.update(self.report_combination)
+    
+    # Set value 
+    self.report_combination = endpoint_dict
 
 
 
