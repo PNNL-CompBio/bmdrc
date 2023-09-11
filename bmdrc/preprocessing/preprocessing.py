@@ -3,7 +3,7 @@ import numpy as np
 
 __author__ = "David Degnan"
 
-def well_to_na(self, endpoint_name, endpoint_value, except_endpoint = None):
+def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
     '''
     Remove any wells where a specific endpoint has a specific value. 
     Wells are set to NA.
@@ -23,10 +23,14 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint = None):
     for endpoint in endpoint_name:
         if endpoint in self.df[self.endpoint].unique() is False:
             raise Exception(endpoint + " is not in an endpoint in the DataClass object")
-        
+
+    # Convert endpoint name to a list
+    if isinstance(endpoint_name, list) == False:
+        endpoint_name = [endpoint_name]
+
     # Convert endpoint value to a list
     if isinstance(endpoint_value, list) == False:
-        endpoint_value = list(endpoint_value)
+        endpoint_value = [endpoint_value]
 
     # Confirm the value exists for at least one endpoint
     if any(self.df[self.df[self.endpoint].isin(endpoint_name)][self.value].isin(endpoint_value)) == False:
@@ -34,6 +38,12 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint = None):
     
     # Iterate through each except endpoint to confirm they are valid choices
     if except_endpoint is not None:
+
+        # Convert except endpoints to a list
+        if isinstance(except_endpoint, list) == False:
+            except_endpoint = [except_endpoint]
+
+        # Check each endpoint
         for endpoint in except_endpoint:
             if endpoint in self.df[self.endpoint].unique() is False:
                 raise Exception(endpoint + " is not in an endpoint in the DataClass object")
@@ -49,15 +59,15 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint = None):
     # List wells to remove
     wells_rm = self.df[(self.df[self.endpoint].isin(endpoint_name)) & (self.df[self.value].isin(endpoint_value))]["bmdrc.Well.ID"]
 
-    # Pull all endpoints
-    all_endpoints = self.df[self.endpoint].unique().tolist()
+    # Pull all endpoints as acceptalbe
+    acc_endpoints = self.df[self.endpoint].unique().tolist()
 
     # Remove specific rows if applicable 
     if except_endpoint is not None:
-        all_endpoints = [end for end in all_endpoints if end not in except_endpoint]
+        acc_endpoints = [end for end in acc_endpoints if end not in except_endpoint]
 
     # Set values to NA
-    self.df[self.df["bmdrc.Well.ID"].isin(wells_rm)][self.value] = np.nan
+    self.df.loc[self.df["bmdrc.Well.ID"].isin(wells_rm) & self.df[self.endpoint].isin(acc_endpoints), self.value] = np.nan
 
     ################################
     ## ADD ATTRIBUTES FOR REPORTS ##

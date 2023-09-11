@@ -13,8 +13,8 @@ class DataClass(object):
     '''
     
     @abstractmethod
-    def set_well_to_na(self, endpoint_name, endpoint_value):
-        well_to_na(self, endpoint_name, endpoint_value)
+    def set_well_to_na(self, endpoint_name, endpoint_value, except_endpoint = None):
+        well_to_na(self, endpoint_name, endpoint_value, except_endpoint)
 
     @abstractmethod
     def combine_and_create_new_endpoints(self, endpoint_dict):
