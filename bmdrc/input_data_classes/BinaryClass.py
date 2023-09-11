@@ -4,6 +4,7 @@ import numpy as np
 from abc import abstractmethod
 
 from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
+from ..filtering import make_groups
 
 __author__ = "David Degnan"
 
@@ -12,6 +13,10 @@ class DataClass(object):
     An abstract class for all bmdrc accepted datatypes
     '''
     
+    ############################
+    ## PRE-PROCESSING MODULES ##
+    ############################
+
     @abstractmethod
     def set_well_to_na(self, endpoint_name, endpoint_value, except_endpoint = None):
         well_to_na(self, endpoint_name, endpoint_value, except_endpoint)
@@ -23,6 +28,14 @@ class DataClass(object):
     @abstractmethod
     def remove_endpoints(self, endpoint_name):
         remove_endpoints(self, endpoint_name)
+
+    #######################
+    ## FILTERING MODULES ##
+    #######################
+
+    @abstractmethod
+    def make_plate_groups(self):
+        make_groups(self)
 
 
 class BinaryClass(DataClass):
@@ -77,7 +90,8 @@ class BinaryClass(DataClass):
     format = property(operator.attrgetter('_format'))
     endpoint = property(operator.attrgetter('_endpoint'))
     value = property(operator.attrgetter('_value'))
-    unacceptable = ["bmdrc.Well.ID"]
+    unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected" \
+                    "bmdrc.Plate.ID"]
 
     ################
     ## SET INPUTS ##
