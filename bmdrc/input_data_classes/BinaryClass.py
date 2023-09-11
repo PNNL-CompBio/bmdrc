@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from abc import abstractmethod
 
-from ..preprocessing import endpoint_combine, well_to_na
+from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
 
 __author__ = "David Degnan"
 
@@ -19,6 +19,10 @@ class DataClass(object):
     @abstractmethod
     def combine_and_create_new_endpoints(self, endpoint_dict):
         endpoint_combine(self, endpoint_dict)
+
+    @abstractmethod
+    def remove_endpoints(self, endpoint_name):
+        remove_endpoints(self, endpoint_name)
 
 
 class BinaryClass(DataClass):
@@ -179,7 +183,7 @@ class BinaryClass(DataClass):
                 raise Exception(valuename + " is not in the column names of df")
             if valuename in self.unacceptable:
                 raise Exception(valuename + "is not a permitted name. Please rename this column.")
-            if not np.isin(self._df["value"].unique(), [0,1]).all():
+            if not np.isin(self._df["value"].unique().tolist(), [0,1]).all():
                 raise Exception("The value column must be comprised of only zeroes and ones.")
             self._value = valuename
         else:

@@ -10,7 +10,7 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
 
     endpoint_name: (list - string) list of endpoints to remove 
 
-    endpoint_value: (numeric) specific value or list of values that the endpoint needs to have to remove the well
+    endpoint_value: (list - numeric) specific value or list of values that the endpoint needs to have to remove the well
 
     except_endpoint: (list - string) list of endpoints that should not have their wells affected
     '''
@@ -18,15 +18,15 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
     ############################
     ## CHECK INPUT PARAMETERS ##
     ############################
-
-    # Iterate through each endpoint to confirm it is a valid choice 
-    for endpoint in endpoint_name:
-        if endpoint in self.df[self.endpoint].unique() is False:
-            raise Exception(endpoint + " is not in an endpoint in the DataClass object")
-
+    
     # Convert endpoint name to a list
     if isinstance(endpoint_name, list) == False:
         endpoint_name = [endpoint_name]
+
+    # Iterate through each endpoint to confirm it is a valid choice 
+    for endpoint in endpoint_name:
+        if endpoint in self.df[self.endpoint].unique().tolist() is False:
+            raise Exception(endpoint + " is not in an endpoint in the DataClass object")
 
     # Convert endpoint value to a list
     if isinstance(endpoint_value, list) == False:
@@ -45,7 +45,7 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
 
         # Check each endpoint
         for endpoint in except_endpoint:
-            if endpoint in self.df[self.endpoint].unique() is False:
+            if endpoint in self.df[self.endpoint].unique().tolist() is False:
                 raise Exception(endpoint + " is not in an endpoint in the DataClass object")
             
     ####################################
@@ -77,10 +77,10 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
     new_attributes = [endpoint_name, endpoint_value, except_endpoint]
 
     # Only add new inputs to the dictionary. 
-    if hasattr(self, "report_well_removal"):
-        self.report_well_removal.append(new_attributes)
+    if hasattr(self, "report_well_na"):
+        self.report_well_na.append(new_attributes)
     else:
-        self.report_well_removal = [new_attributes]
+        self.report_well_na = [new_attributes]
 
 def endpoint_combine(self, endpoint_dict):
     '''
@@ -124,7 +124,7 @@ def endpoint_combine(self, endpoint_dict):
     # Iterate through each dictionary entry 
     for NewEndpoint in endpoint_dict:
 
-        if NewEndpoint in self.df[self.endpoint].unique():
+        if NewEndpoint in self.df[self.endpoint].unique().tolist():
             print(NewEndpoint + " is already an existing endpoint")
         else:
             self.df = pd.concat([self.df, new_endpoint(NewEndpoint, endpoint_dict[NewEndpoint])])
@@ -139,6 +139,44 @@ def endpoint_combine(self, endpoint_dict):
     
     # Set value 
     self.report_combination = endpoint_dict
+
+def remove_endpoints(self, endpoint_name):
+    '''
+    Completely remove an endpoint or set of endpoints from the dataset
+
+    endpoint_name: (list - string) A list of endpoints to remove
+    '''
+
+    ############################
+    ## CHECK INPUT PARAMETERS ##
+    ############################
+
+    # Convert endpoint name to a list
+    if isinstance(endpoint_name, list) == False:
+        endpoint_name = [endpoint_name]
+
+    # Iterate through each endpoint to confirm it is a valid choice 
+    for endpoint in endpoint_name:
+        if endpoint in self.df[self.endpoint].unique().tolist() is False:
+            raise Exception(endpoint + " is not in an endpoint in the DataClass object")
+        
+    ######################
+    ## REMOVE ENDPOINTS ##
+    ######################
+
+    self.df = self.df[self.df[self.endpoint].isin(endpoint_name) == False]
+
+    ################################
+    ## ADD ATTRIBUTES FOR REPORTS ##
+    ################################
+
+    # Only add new inputs to the dictionary. 
+    if hasattr(self, "report_endpoint_removal"):
+        self.report_endpoint_removal.extend(endpoint_name)
+    else:
+        self.report_endpoint_removal = endpoint_name
+
+
 
 
 
