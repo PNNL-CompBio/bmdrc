@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import ipdb
 
 __author__ = "David Degnan"
 
@@ -25,7 +26,7 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
 
     # Iterate through each endpoint to confirm it is a valid choice 
     for endpoint in endpoint_name:
-        if endpoint in self.df[self.endpoint].unique().tolist() is False:
+        if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
             raise Exception(endpoint + " is not in an endpoint in the DataClass object")
 
     # Convert endpoint value to a list
@@ -45,7 +46,7 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
 
         # Check each endpoint
         for endpoint in except_endpoint:
-            if endpoint in self.df[self.endpoint].unique().tolist() is False:
+            if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
                 raise Exception(endpoint + " is not in an endpoint in the DataClass object")
             
     ####################################
@@ -157,7 +158,7 @@ def remove_endpoints(self, endpoint_name):
 
     # Iterate through each endpoint to confirm it is a valid choice 
     for endpoint in endpoint_name:
-        if endpoint in self.df[self.endpoint].unique().tolist() is False:
+        if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
             raise Exception(endpoint + " is not in an endpoint in the DataClass object")
         
     ######################
