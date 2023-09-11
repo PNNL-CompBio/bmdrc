@@ -73,13 +73,14 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
     ## ADD ATTRIBUTES FOR REPORTS ##
     ################################
 
+    # New attributes 
+    new_attributes = [endpoint_name, endpoint_value, except_endpoint]
+
     # Only add new inputs to the dictionary. 
     if hasattr(self, "report_well_removal"):
-        self.report_well_removal.append([endpoint_name, endpoint_value, except_endpoint])
+        self.report_well_removal.append(new_attributes)
     else:
-        self.report_combination = [endpoint_name, endpoint_value, except_endpoint]
-
-
+        self.report_well_removal = [new_attributes]
 
 def endpoint_combine(self, endpoint_dict):
     '''
