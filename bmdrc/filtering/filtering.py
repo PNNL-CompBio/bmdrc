@@ -96,5 +96,15 @@ def negative_control(self, percentage, apply, diagnostic):
     ## CREATE DIAGNOSTIC SUMMARY ##
     ###############################
 
-    
+    # Extract negative controls 
+    NegControls = self.plate_groups[self.plate_groups[self.concentration] == 0]
+
+    # Calculate responses in negative controls
+    NegControlRes = pd.DataFrame((NegControls["bmdrc.num.affected"] / NegControls["bmdrc.num.nonna"])).value_counts().rename_axis("Response").reset_index().rename(columns = {0:"Count"}).sort_values(by = ["Response"]).reset_index(drop=True)
+    NegControlRes["Filter"] = "Keep"
+    NegControlRes.loc[NegControlRes["Response"] > 0.5, "Filter"] = "Filter"
+
+  
+
+
     
