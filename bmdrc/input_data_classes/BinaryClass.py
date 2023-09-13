@@ -4,7 +4,7 @@ import numpy as np
 from abc import abstractmethod
 
 from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
-from ..filtering import make_groups
+from ..filtering import make_plate_groups, negative_control
 
 __author__ = "David Degnan"
 
@@ -32,6 +32,10 @@ class DataClass(object):
     #######################
     ## FILTERING MODULES ##
     #######################
+
+    @abstractmethod
+    def make_plate_groups(self):
+        make_plate_groups(self)
 
     @abstractmethod
     def filter_negative_control(self, percentage = 50, apply = False, diagnostic = "plot"):
