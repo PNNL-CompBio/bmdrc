@@ -34,7 +34,13 @@ def make_plate_groups(self):
                                             self.plate_groups[self.plate].astype(str) + " " + \
                                             self.plate_groups[self.endpoint].astype(str)
     
-def check_apply_diagnostic(apply, diagnostic):
+    # Add a filtered status
+    self.plate_groups["bmdrc.filter"] = "Keep"
+
+    # Add a filtered reason status 
+    self.plate_groups["bmdrc.filter.reason"] = ""
+    
+def check_apply_diagnostic(apply, diagnostic_plot):
     '''
     Support function for the filter modules. 
     Check that apply and diagnostic are acceptable inputs.
@@ -49,12 +55,8 @@ def check_apply_diagnostic(apply, diagnostic):
         raise Exception("apply must be a True or False.")
     
     # Check that diagnostic is either plot, df, or both
-    if isinstance(diagnostic, list):
-        if all(diagnostic in ["plot", "df"]) == False:
-            raise Exception("diagnostic must be either 'plot', 'df', or a list with 'plot' and 'df'")
-    else:
-        if diagnostic != "plot" and diagnostic != "df":
-            raise Exception("diagnostic must be either 'plot', 'df', or a list with 'plot' and 'df'")
+    if type(diagnostic_plot) != bool:
+        raise Exception("diagnostic_plot must be a True or False.")
         
 def negative_control_plot(neg_control_df):
     '''
@@ -79,7 +81,7 @@ def negative_control_plot(neg_control_df):
 
     return(fig)
 
-def negative_control(self, percentage, apply, diagnostic):
+def negative_control(self, percentage, apply, diagnostic_plot):
     '''
     Filter to remove plates with unusually high expression in the controls. 
 
@@ -88,8 +90,8 @@ def negative_control(self, percentage, apply, diagnostic):
 
     apply: (logical) Apply the filter. Default is False. 
 
-    diagnostic: (list - string) If apply if False, see a diagnostic plot with "plot" or 
-    a diagnostics data.frame with "df"
+    diagnostic_plot: (logical) If apply is False, see a diagnostic plot with True. Otherwise,
+    only a diagnostics data.frame will be stored in the object. Default is False. 
     '''
 
     ##################
@@ -111,7 +113,7 @@ def negative_control(self, percentage, apply, diagnostic):
         print("percentage should range from 0-100, as in 0-100%. This value will be a very small percentage.")
     
     # Check apply and diagnostic
-    check_apply_diagnostic(apply, diagnostic)
+    check_apply_diagnostic(apply, diagnostic_plot)
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -132,21 +134,33 @@ def negative_control(self, percentage, apply, diagnostic):
     # Calculate responses in negative controls
     NegControlRes = pd.DataFrame((NegControls["bmdrc.num.affected"] / NegControls["bmdrc.num.nonna"])).value_counts().rename_axis("Response").reset_index().rename(columns = {0:"Count"}).sort_values(by = ["Response"]).reset_index(drop=True)
     
+    # Multiply Response by 100 to make it a percentage
+    NegControlRes["Response"] = NegControlRes["Response"] * 100
+
     # Set all values to be kept 
     NegControlRes["Filter"] = "Keep"
 
     # Determine what values will be removed
-    NegControlRes.loc[NegControlRes["Response"] > percentage/100, "Filter"] = "Filter"
+    NegControlRes.loc[NegControlRes["Response"] > percentage, "Filter"] = "Filter"
+
+    # Always make the backend data frame 
+    self.filter_negative_control_df = NegControlRes
 
     #######################
     ## RETURN DIAGNOSTIC ##
     #######################
-
-    if isinstance(diagnostic, list) == False: 
-        if diagnostic == "df":
-            self.filter_negative_control_df = NegControlRes
-        if diagnostic == "plot":
+    
+    if apply == False:
+        if diagnostic_plot == True:
             self.filter_negative_control_plot = negative_control_plot(NegControlRes)
+    
+    #############################
+    ## OTHERWISE, APPLY FILTER ##
+    #############################
+
+    else:
+
+        print("TBD")
 
 
 

@@ -38,8 +38,8 @@ class DataClass(object):
         make_plate_groups(self)
 
     @abstractmethod
-    def filter_negative_control(self, percentage = 50, apply = False, diagnostic = "plot"):
-        negative_control(self, percentage, apply, diagnostic)
+    def filter_negative_control(self, percentage = 50, apply = False, diagnostic_plot = False):
+        negative_control(self, percentage, apply, diagnostic_plot)
 
 
 class BinaryClass(DataClass):
