@@ -34,6 +34,10 @@ def make_plate_groups(self):
                                             self.plate_groups[self.plate].astype(str) + " " + \
                                             self.plate_groups[self.endpoint].astype(str)
     
+    # Create endpoint groups 
+    self.plate_groups["bmdrc.Endpoint.ID"] = self.plate_groups[self.chemical].astype(str) + " " + \
+                                            self.plate_groups[self.endpoint].astype(str) 
+
     # Add a filtered status
     self.plate_groups["bmdrc.filter"] = "Keep"
 
@@ -159,8 +163,10 @@ def negative_control(self, percentage, apply, diagnostic_plot):
     #############################
 
     else:
-
-        print("TBD")
+        
+        # Apply filter
+        self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100, "bmdrc.filter"] = "Filter"
+        self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100, "bmdrc.filter.reason"] = "Negative control filter"
 
 
 
