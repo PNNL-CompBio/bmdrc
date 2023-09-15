@@ -166,11 +166,113 @@ def negative_control(self, percentage, apply, diagnostic_plot):
         
         # Apply filter
         self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100, "bmdrc.filter"] = "Filter"
-        self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100, "bmdrc.filter.reason"] = "Negative control filter"
+        self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100, "bmdrc.filter.reason"] =  \
+            self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100, "bmdrc.filter.reason"] + " negative_control_filter"
 
 
+def min_concentration_plot(min_concentration_df):
+    '''
+    Support function for the filter modules. 
+    Returns the minimum concentration diagnostic plot. 
+    '''
 
-  
+    fig = plt.figure(figsize = (10, 5))
+
+    colors = {'Keep':'steelblue', 'Filter':'firebrick'}
+    color_choices = min_concentration_df["Filter"].apply(lambda x: colors[x])
+    labels = list(colors.keys())
+    handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+
+    plt.bar(x = [x for x in range(len(min_concentration_df))], height = min_concentration_df["Count"], 
+            edgecolor = "black", tick_label = min_concentration_df["NumConc"],
+            color = color_choices, label = colors)
+    plt.title("Counts of the number of concentrations per chemical and endpoint")
+    plt.xlabel("Number of Concentrations")
+    plt.ylabel("Total")
+    plt.legend(handles, labels)
+
+    return(fig)
+
+def min_concentration(self, count, apply, diagnostic_plot): 
+    '''
+    Filter to remove endpoints without enough concentration measurements.
+
+    count: (integer) The minimum number of concentrations an endpoint and chemical combination
+    needs. Default is 3. 
+
+    apply: (logical) Apply the filter. Default is False. 
+
+    diagnostic_plot: (logical) If apply is False, see a diagnostic plot with True. Otherwise,
+    only a diagnostics data.frame will be stored in the object. Default is False. 
+    '''
+
+    ##################
+    ## CHECK INPUTS ##
+    ##################
+
+    # Assert that count is an integer
+    try:
+        count = int(count)
+    except ValueError:
+        raise Exception("count must be an integer.")
+    
+    # Count must be 1 or larger
+    if count < 1:
+        raise Exception("count must be at least 1.")
+    
+    # Check apply and diagnostic
+    check_apply_diagnostic(apply, diagnostic_plot)
+
+    ##############################
+    ## MAKE GROUPS IF NECESSARY ##
+    ##############################
+
+    try:
+        self.plate_groups
+    except AttributeError:
+        make_plate_groups(self)
+
+    ###############################
+    ## CREATE DIAGNOSTIC SUMMARY ##
+    ###############################
+
+    # Get a count per concentration group
+    ConcCount = self.plate_groups.loc[self.plate_groups["bmdrc.filter"] == "Keep", ["bmdrc.Endpoint.ID", self.concentration]].groupby("bmdrc.Endpoint.ID").nunique().reset_index().rename(columns = {self.concentration:"Count"}).sort_values(by = "Count")
+
+    # Get summary counts of counts
+    ConcCountSum = ConcCount["Count"].value_counts().reset_index().rename(columns = {"index":"NumConc"}).sort_values(["NumConc"])
+
+    # Keep all by default
+    ConcCountSum["Filter"] = "Keep"
+
+    # Apply filter threshold
+    ConcCountSum.loc[ConcCountSum["NumConc"] < count, "Filter"] = "Filter"
+
+    # Add summary filter to object
+    self.filter_min_concentration_df = ConcCountSum
+
+    #######################
+    ## RETURN DIAGNOSTIC ##
+    #######################
+    
+    if apply == False:
+        if diagnostic_plot == True:
+            self.filter_min_concentration_plot = min_concentration_plot(ConcCountSum)
+
+    #############################
+    ## OTHERWISE, APPLY FILTER ##
+    #############################
+
+    else:
+        
+        # Get list of endpoints to remove
+        EndpointRemoval = ConcCount.loc[ConcCount["Count"] < 8, "bmdrc.Endpoint.ID"].tolist()
+
+        self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(EndpointRemoval), "bmdrc.filter"] = "Remove"
+        self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(EndpointRemoval), "bmdrc.filter.reason"] = \
+            self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(EndpointRemoval), "bmdrc.filter.reason"] + " min_concentration_filter"
+
 
 
     
+

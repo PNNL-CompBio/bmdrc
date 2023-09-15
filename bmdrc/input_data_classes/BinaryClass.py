@@ -4,7 +4,7 @@ import numpy as np
 from abc import abstractmethod
 
 from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
-from ..filtering import make_plate_groups, negative_control
+from ..filtering import make_plate_groups, negative_control, min_concentration
 
 __author__ = "David Degnan"
 
@@ -40,6 +40,10 @@ class DataClass(object):
     @abstractmethod
     def filter_negative_control(self, percentage = 50, apply = False, diagnostic_plot = False):
         negative_control(self, percentage, apply, diagnostic_plot)
+
+    @abstractmethod
+    def filter_min_concentration(self, count = 3, apply = False, diagnostic_plot = False):
+        min_concentration(self, count, apply, diagnostic_plot)
 
 
 class BinaryClass(DataClass):

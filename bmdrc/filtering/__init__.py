@@ -1,1 +1,1 @@
-from .filtering import make_plate_groups, negative_control
+from .filtering import make_plate_groups, negative_control, min_concentration
