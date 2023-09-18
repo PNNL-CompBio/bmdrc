@@ -124,8 +124,9 @@ class BinaryClass(DataClass):
     format = property(operator.attrgetter('_format'))
     endpoint = property(operator.attrgetter('_endpoint'))
     value = property(operator.attrgetter('_value'))
-    unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected" \
-                    "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason"]
+    unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
+                    "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
+                    "bmdrc.frac.affected"]
 
     ################
     ## SET INPUTS ##

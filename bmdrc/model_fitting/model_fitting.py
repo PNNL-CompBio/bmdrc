@@ -574,7 +574,7 @@ class Quantal_Linear_BMD(GenericLikelihoodModel):
 
 def removed_endpoints_stats(self):
     '''
-    Accessory function to fit the models. 
+    Accessory function to fit_the_models. 
     As the first in the pipeline, this function calculates summary
     statistics for the endpoints that are filtered out. No models are
     fit in these values. 
@@ -607,13 +607,17 @@ def removed_endpoints_stats(self):
 
 
 def select_and_run_models(self):
-    '''Iterate through each acceptable ID and fit models.'''
+    '''
+    Accessory function to fit_the_models. 
+    This function fits all non-filtered endpoints to the EPA recommended 
+    models.
+    '''
+
+    # Add fraction affected to plate groups 
+    self.plate_groups["bmdrc.frac.affected"] = self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]
 
     # Pull dose_response
     dose_response = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]
-
-    # Calculate the fraction affected 
-    dose_response["frac.affected"] = dose_response["bmdrc.num.affected"] / dose_response["bmdrc.num.nonna"]
 
     # Pull all values to fit
     to_fit = dose_response["bmdrc.Endpoint.ID"].unique().tolist()
@@ -631,7 +635,7 @@ def select_and_run_models(self):
             '''Return a p-value of model fit for each unique ID and Model dataframe pairing'''
 
             # Get the experimental values 
-            ExperimentalValues = sub_data["frac.affected"].tolist()
+            ExperimentalValues = sub_data["bmdrc.frac.affected"].tolist()
 
             # Get count of non-na values
             NonNATotals = sub_data["bmdrc.num.nonna"].tolist() 
@@ -711,6 +715,184 @@ def select_and_run_models(self):
 
     self.model_fits = model_results
 
+def calc_fit_statistics(self):
+    '''
+    Accessory function to fit_the_models. 
+    Calculates fit statistics for model fits. 
+    '''
+    
+    # Pull model fits
+    model_results = self.model_fits
+
+    # Make p-value dataframe
+    p_value_list = []
+    for id in model_results.keys():
+        theDict = model_results[id][0]
+        theDict["bmdrc.Endpoint.ID"] = id
+        p_value_list.append(theDict)
+
+    p_value_df = pd.DataFrame(p_value_list)
+
+    #######################################
+    ## PULL AKAIKE INFORMATION CRITERION ##
+    #######################################
+
+    # Make aic dataframe
+    aic_list = []
+    for id in model_results.keys():
+        theDict = model_results[id][3]
+        theDict["bmdrc.Endpoint.ID"] = id
+        aic_list.append(theDict)
+
+    aic_df = pd.DataFrame(aic_list)
+
+    ##############################
+    ## CALCULATE BENCHMARK DOSE ##
+    ##############################
+
+    def Calculate_BMD(Model, params, BenchmarkResponse = 0.1):
+        '''Calculate a benchmark dose'''
+
+        # For each model, extract the parameters and run the calculations
+        if (Model == "Logistic"): 
+            alpha_, beta_ = params
+            return(np.log((1 + np.exp(-alpha_)*BenchmarkResponse)/(1-BenchmarkResponse))/beta_)
+        elif (Model == "Gamma"):
+            g_, alpha_, beta_ = params
+            return(stats.gamma.ppf(BenchmarkResponse, alpha_, scale = 1/beta_))
+        elif (Model == "Weibull"):
+            g_, alpha_, beta_ = params
+            return((-np.log(1 - BenchmarkResponse)/beta_)**(1/alpha_))
+        elif (Model == "Log Logistic"):
+            g_, alpha_, beta_ = params
+            return(np.exp((np.log(BenchmarkResponse/(1-BenchmarkResponse)) - alpha_)/beta_))
+        elif (Model == "Probit"):
+            alpha_, beta_ = params
+            p_0 = stats.norm.cdf(alpha_)
+            p_BMD = p_0 + (1 - p_0)*BenchmarkResponse
+            return((stats.norm.ppf(p_BMD) - alpha_)/beta_)
+        elif (Model == "Log Probit"):
+            g_, alpha_, beta_ = params
+            return(np.exp((stats.norm.ppf(BenchmarkResponse) - alpha_)/beta_))
+        elif (Model == "Multistage"):
+            g_, beta_, beta2_ = params
+            return((-beta_ + np.sqrt((beta_**2) - (4*beta2_*np.log(1 - BenchmarkResponse))))/(2*beta2_))
+        elif (Model == "Quantal Linear"):
+            g_, beta_ = params
+            return(-np.log(1 - BenchmarkResponse)/beta_)
+        else:
+            print(Model, "was not recognized as an acceptable model choice.")
+
+    def Calculate_BMDL(Model, FittedModelObj, Data, BMD10, params, MaxIterations = 100, ToleranceThreshold = 1e-4):
+        '''Run BMDL Function Test'''
+
+        # Reformat data
+        Data = Data[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()
+
+        # Define an initial low and high threshold
+        BMD_Low = BMD10/10
+        BMD_High = BMD10
+
+        # Start a counter and set tolerance to 1
+        Iteration_Count = 0
+        Tolerance = 1
+
+        # Set a LLV Threhold
+        BMDL_LLV_Thresh = FittedModelObj.fit().llf - stats.chi2.ppf(0.9, 1)/2
+
+        # Start a while condition loop
+        while ((Tolerance > ToleranceThreshold) and (Iteration_Count <= MaxIterations)):
+            
+            # Add to the iteration counters 
+            Iteration_Count+=1
+
+            # If maximum iterations are reached, set BMDL to NA and break
+            if (Iteration_Count == MaxIterations):
+                BMDL = np.nan
+                break
+
+            # BMDL should be the mid value between the low and high estimate
+            BMDL = (BMD_Low + BMD_High)/2
+            ModelObj = np.nan
+
+            # Select the correct BMD model
+            if (Model == "Logistic"):
+                ModelObj = Logistic_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
+            elif (Model == "Gamma"):
+                ModelObj = Gamma_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            elif (Model == "Weibull"):
+                ModelObj = Weibull_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            elif (Model == "Log Logistic"):
+                try:
+                    ModelObj = Log_Logistic_BMD(Data).profile_ll_fit([params[0], params[2], BMDL]) # Value is g and beta
+                except:
+                    return(np.nan)
+            elif (Model == "Probit"):
+                ModelObj = Probit_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
+            elif (Model == "Log Probit"):
+                ModelObj = Log_Probit_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            elif (Model == "Multistage"):
+                ModelObj = Multistage_2_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and beta 1
+            elif (Model == "Quantal Linear"):
+                ModelObj = Quantal_Linear_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is g
+            else:
+                print(Model, "was not recognized as an acceptable model choice.")
+
+            # Pull the llf 
+            LLF = ModelObj.llf
+
+            # If the calculated LLF is not within the threshold, set high to BMDL and run again 
+            if((LLF - BMDL_LLV_Thresh) > 0):
+                BMD_High = BMDL
+            # Otherwise, set low to BMDL
+            else:
+                BMD_Low = BMDL
+
+            Tolerance = abs(LLF - BMDL_LLV_Thresh)
+
+        return(BMDL)
+
+    # Build BMD table for fitted data 
+    BMDS_Model = []
+
+    for id in model_results.keys():
+
+        # Get the model name 
+        Model = model_results[id][2]
+
+        # Get the fitted modeol object
+        FittedModelObj = model_results[id][1][0]
+
+        # Get the parameters 
+        params = model_results[id][1][1]
+
+        # Get the BMD10 value 
+        BMD10 = Calculate_BMD(Model, params, 0.1)
+
+        # Get the dose response data
+        Data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == id]
+
+        # Get the AUC, min, and max dose 
+        AUC = np.trapz(Data["bmdrc.frac.affected"], x = Data["conc"])
+        Min_Dose = round(min(Data["conc"]), 4)
+        Max_Dose = round(max(Data["conc"]), 4)
+
+        # Return results in a dictionary
+        rowDict = {
+            "bmdrc.Endpoint.ID": id,
+            "Model": Model,
+            "BMD10": BMD10, 
+            "BMDL": Calculate_BMDL(Model, FittedModelObj, Data, BMD10, params),
+            "BMD50": Calculate_BMD(Model, params, 0.5),
+            "AUC": AUC,
+            "Min_Dose": Min_Dose,
+            "Max_Dose": Max_Dose,
+            "AUC_Norm": AUC / (Max_Dose - Min_Dose)
+        }
+        BMDS_Model.append(rowDict)
+
+    self.bmds = pd.DataFrame(BMDS_Model)
+
 
 def fit_the_models(self, models, fit_threshold, BMD_Measurements):
     '''
@@ -731,11 +913,14 @@ def fit_the_models(self, models, fit_threshold, BMD_Measurements):
     ## FIT MODELS ##
     ################
 
-    # Calculate statistics for endpoints that are filtered out
+    # 1. Calculate statistics for endpoints that are filtered out
     removed_endpoints_stats(self)
 
-    # Fit models and calculate statistics for endpoints that are not filtered out
+    # 2. Fit models for endpoints that are not filtered out
     select_and_run_models(self)
+
+    # 3. Calculate statistics
+    calc_fit_statistics(self)
 
 
 
