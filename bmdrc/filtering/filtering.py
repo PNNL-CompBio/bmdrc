@@ -273,6 +273,138 @@ def min_concentration(self, count, apply, diagnostic_plot):
             self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(EndpointRemoval), "bmdrc.filter.reason"] + " min_concentration_filter"
 
 
+def correlation_score_plot(correlation_score, threshold):
+    '''
+    Support function for the filter modules. 
+    Returns the distribution of correlation scores. 
+    '''
+
+    fig = plt.figure(figsize = (10, 5))
+
+    # Fix bin sizes 
+    the_bins = [x/100 for x in range(-100, 105, 5)]
+
+    # Get counts a bin sizes
+    k_counts, k_bins = np.histogram(correlation_score.loc[correlation_score["Filter"] == "Keep", "Spearman"], bins = the_bins)
+    r_counts, r_bins = np.histogram(correlation_score.loc[correlation_score["Filter"] == "Remove", "Spearman"], bins = the_bins)
+
+    # Make plot
+    plt.hist(k_bins[:-1], k_bins, weights = k_counts, color = "steelblue", label = "Keep", ec = "k")
+    plt.hist(r_bins[:-1], r_bins, weights = r_counts, color = "firebrick", label = "Remove", ec = "k")
+
+    # Create legend
+    handles = [plt.Rectangle((0,0),1,1, color=c, ec = "k") for c in ["firebrick", "steelblue"]]
+    labels= ["Remove", "Keep"]
+    plt.legend(handles, labels)
+
+    # Label axes
+    plt.title("Counts of the spearman correlations for endpoint and chemical combinations")
+    plt.xlabel("Spearman Correlation")  
+    plt.ylabel("Count")
+
+    # Add line at correlation
+    plt.axvline(x = threshold, color = "red")
+
+    return fig
+
+def correlation_score(self, score, apply, diagnostic_plot): 
+    '''
+    Filter to remove endpoints with low correlation score thresholds.
+
+    score: (float) A threshold for the correlation score. 
+
+    apply: (logical) Apply the filter. Default is False. 
+
+    diagnostic_plot: (logical) If apply is False, see a diagnostic plot with True. Otherwise,
+    only a diagnostics data.frame will be stored in the object. Default is False. 
+    '''
+
+    ##################
+    ## CHECK INPUTS ##
+    ##################
+
+    # Assert that score is a float
+    try:
+        score = float(score)
+    except ValueError:
+        raise Exception("score must be an integer.")
+    
+    # Score must be greater than -1 or less than 1
+    if score < -1 or score > 1:
+        raise Exception("score must be larger than -1 or less than 1 to filter any values.")
+    
+    # Check apply and diagnostic
+    check_apply_diagnostic(apply, diagnostic_plot)
+
+    ##############################
+    ## MAKE GROUPS IF NECESSARY ##
+    ##############################
+
+    try:
+        self.plate_groups
+    except AttributeError:
+        make_plate_groups(self)
+
+    ###############################
+    ## CREATE DIAGNOSTIC SUMMARY ##
+    ###############################
+
+    # Pull plate groups
+    CorScore = self.plate_groups
+
+    # First, only keep the values that aren't being filtered
+    CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", "bmdrc.num.nonna", "bmdrc.num.affected"]]
+
+    # Sum up counts
+    CorScore = CorScore.groupby(["conc", "bmdrc.Endpoint.ID"]).sum().reset_index()
+
+    # Calculate response
+    CorScore["Response"] = CorScore["bmdrc.num.affected"] / CorScore["bmdrc.num.nonna"]
+
+    # Sort data.frame appropriately
+    CorScore.sort_values(by = ["bmdrc.Endpoint.ID", self.concentration])
+
+    # Calculate spearman correlations
+    CorScore = CorScore[["conc", "bmdrc.Endpoint.ID", "Response"]].groupby(["bmdrc.Endpoint.ID"]).corr(method = "spearman").unstack().iloc[:,1].reset_index()
+
+    # Fix index issues 
+    CorScore = CorScore.set_axis(["bmdrc.Endpoint.ID", "Spearman"], axis = 1)
+
+    # Set NA values (cases of a consistent value across all wells) to 0
+    CorScore.loc[np.isnan(CorScore["Spearman"]), "Spearman"] = 0
+
+    # Set the filter to leep
+    CorScore["Filter"] = "Keep"
+
+    # Filter cases with less than 0.2 as their correlation score
+    CorScore.loc[CorScore["Spearman"] < score, "Filter"] = "Remove"
+
+    # Add correlation summary object to object
+    self.filter_correlation_score_df = CorScore
+
+    #######################
+    ## RETURN DIAGNOSTIC ##
+    #######################
+    
+    if apply == False:
+        if diagnostic_plot == True:
+            self.filter_correlation_score_plot = correlation_score_plot(CorScore, score)
+
+    #############################
+    ## OTHERWISE, APPLY FILTER ##
+    #############################
+
+    else:
+
+        # Get list of removals 
+        removal_list = CorScore.loc[CorScore["Filter"] == "Remove", "bmdrc.Endpoint.ID"].tolist()
+
+        # Remove values
+        self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(removal_list), "bmdrc.filter"] = "Remove"
+        self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(removal_list), "bmdrc.filter.reason"] = \
+            self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(removal_list), "bmdrc.filter.reason"] + " correlation_score_filter"
+
+
 
     
 

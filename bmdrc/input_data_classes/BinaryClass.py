@@ -4,7 +4,7 @@ import numpy as np
 from abc import abstractmethod
 
 from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
-from ..filtering import make_plate_groups, negative_control, min_concentration
+from ..filtering import make_plate_groups, negative_control, min_concentration, correlation_score
 
 __author__ = "David Degnan"
 
@@ -45,6 +45,9 @@ class DataClass(object):
     def filter_min_concentration(self, count = 3, apply = False, diagnostic_plot = False):
         min_concentration(self, count, apply, diagnostic_plot)
 
+    @abstractmethod
+    def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False):
+        correlation_score(self, score, apply, diagnostic_plot)
 
 class BinaryClass(DataClass):
     '''
