@@ -10,6 +10,8 @@ from ..output_modules import benchmark_dose, model_fit_metrics
 
 __author__ = "David Degnan"
 
+## Guidance for all selections can be found here: https://www.epa.gov/sites/default/files/2015-01/documents/benchmark_dose_guidance.pdf
+
 class DataClass(object):
     '''
     An abstract class for all bmdrc accepted datatypes

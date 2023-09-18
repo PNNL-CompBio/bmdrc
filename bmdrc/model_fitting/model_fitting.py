@@ -730,7 +730,7 @@ def calc_fit_statistics(self):
         theDict["bmdrc.Endpoint.ID"] = id
         p_value_list.append(theDict)
 
-    p_value_df = pd.DataFrame(p_value_list)
+    self.p_value_df = pd.DataFrame(p_value_list)
 
     #######################################
     ## PULL AKAIKE INFORMATION CRITERION ##
@@ -743,7 +743,7 @@ def calc_fit_statistics(self):
         theDict["bmdrc.Endpoint.ID"] = id
         aic_list.append(theDict)
 
-    aic_df = pd.DataFrame(aic_list)
+    self.aic_df = pd.DataFrame(aic_list)
 
     ##############################
     ## CALCULATE BENCHMARK DOSE ##
