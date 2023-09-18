@@ -5,6 +5,8 @@ from abc import abstractmethod
 
 from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
 from ..filtering import make_plate_groups, negative_control, min_concentration, correlation_score
+from ..model_fitting import fit_the_models
+from ..output_modules import benchmark_dose, model_fit_metrics
 
 __author__ = "David Degnan"
 
@@ -48,6 +50,27 @@ class DataClass(object):
     @abstractmethod
     def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False):
         correlation_score(self, score, apply, diagnostic_plot)
+
+    ###########################
+    ## MODEL FITTING MODULES ##
+    ###########################
+
+    @abstractmethod
+    def fit_models(self, models = "all", fit_threshold = 1, BMD_Measurements = ["BMD10", "BMDL", "BMD50", "AUC"]):
+        fit_the_models(self, models, fit_threshold, BMD_Measurements)
+
+    ####################
+    ## OUTPUT MODULES ##
+    ####################
+
+    @abstractmethod
+    def output_benchmark_dose(self, path):
+        benchmark_dose(self, path)
+
+    @abstractmethod
+    def output_model_fit_metrics(self, path):
+        model_fit_metrics(self, path)
+
 
 class BinaryClass(DataClass):
     '''
