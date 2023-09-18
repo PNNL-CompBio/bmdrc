@@ -64,11 +64,11 @@ class DataClass(object):
     ####################
 
     @abstractmethod
-    def output_benchmark_dose(self, path):
+    def output_benchmark_dose(self, path = None):
         benchmark_dose(self, path)
 
     @abstractmethod
-    def output_model_fit_metrics(self, path):
+    def output_model_fit_metrics(self, path = None):
         model_fit_metrics(self, path)
 
 

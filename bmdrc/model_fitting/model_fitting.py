@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-from astropy import stats as astrostats
 from statsmodels.base.model import GenericLikelihoodModel
 
 import warnings
