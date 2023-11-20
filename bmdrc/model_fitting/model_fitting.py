@@ -921,6 +921,21 @@ def fit_the_models(self, models, fit_threshold, BMD_Measurements):
     # 3. Calculate statistics
     calc_fit_statistics(self)
 
+    ####################
+    ## ADD ATTRIBUTES ##
+    ####################
+
+    self.report_model_fits = True 
+
+
+def response_curve(self, chemical_name, endpoint_name, family, plot):
+    '''
+    Generate the x and y coordinates of the curve, and optionally a plot 
+    '''
+
+    #####################
+    ## CALCULATE CURVE ##
+    #####################
 
 
 
