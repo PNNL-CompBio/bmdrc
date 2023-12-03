@@ -928,14 +928,42 @@ def fit_the_models(self, models, fit_threshold, BMD_Measurements):
     self.report_model_fits = True 
 
 
-def response_curve(self, chemical_name, endpoint_name, family, plot):
+def gen_response_curve(self, chemical_name, endpoint_name, model, plot):
     '''
     Generate the x and y coordinates of the curve, and optionally a plot 
     '''
 
+    ################
+    ## RUN CHECKS ##
+    ################
+
+    # Check that chemical_name is an acceptable choice
+    if chemical_name in (self.df[self.chemical].unique().tolist()) == False:
+        raise Exception(chemical_name + " is not a recognized chemical_name.")
+    
+    # Check that endpoint_name is an acceptable choice 
+    if endpoint_name in (self.df[self.endpoint].unique().tolist()) == False:
+        raise Exception(endpoint_name + " is not a recognized endpoint_name.")
+
+    # If the user wants the "best" model fit, ensure that the "fit" function has been run
+    if model == "best": 
+        try: 
+            fits = self.model_fits
+        except:
+            raise Exception("Please run the .fit_models() function first to select a 'best' model.")
+    else:
+        if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"]):
+            raise Exception(model + " is not an acceptable model option. Acceptable options are: ",
+                            "logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear")
+
     #####################
     ## CALCULATE CURVE ##
     #####################
+
+    # Auto-select "best" model if user specifies 
+    
+
+    
 
 
 

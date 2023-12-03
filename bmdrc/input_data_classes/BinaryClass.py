@@ -5,7 +5,7 @@ from abc import abstractmethod
 
 from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
 from ..filtering import make_plate_groups, negative_control, min_concentration, correlation_score
-from ..model_fitting import fit_the_models, response_curve
+from ..model_fitting import fit_the_models, gen_response_curve
 from ..output_modules import benchmark_dose, model_fit_metrics
 
 __author__ = "David Degnan"
@@ -62,8 +62,8 @@ class DataClass(object):
         fit_the_models(self, models, fit_threshold, BMD_Measurements)
 
     @abstractmethod
-    def bmdrc(self, chemical_name, endpoint_name, plot = True):
-        response_curve(self, chemical_name, endpoint_name, plot)
+    def response_curve(self, chemical_name, endpoint_name, model = "best", plot = True):
+        gen_response_curve(self, chemical_name, endpoint_name, model, plot)
 
     ####################
     ## OUTPUT MODULES ##
