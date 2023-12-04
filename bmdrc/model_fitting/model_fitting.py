@@ -736,14 +736,27 @@ def calc_fit_statistics(self):
     ## PULL AKAIKE INFORMATION CRITERION ##
     #######################################
 
-    # Make aic dataframe
+    # Make aic list
     aic_list = []
     for id in model_results.keys():
         theDict = model_results[id][3]
         theDict["bmdrc.Endpoint.ID"] = id
         aic_list.append(theDict)
 
-    self.aic_df = pd.DataFrame(aic_list)
+    # Pull the AIC data.frame 
+    aic_df = pd.DataFrame(aic_list)
+
+    # Write function to identify the lowest AIC per row
+    def min_aic(sr):
+        name = sr.idxmin()
+        value = sr[name]
+        return pd.Series([value, name])
+    
+    # Apply function
+    aic_df[['Min_AIC','Min_Model']] = aic_df[aic_df.columns.tolist()].apply(lambda x : min_aic(x), axis=1)
+
+    # Save AIC df with minimum values computed
+    self.aic_df = aic_df
 
     ##############################
     ## CALCULATE BENCHMARK DOSE ##
@@ -955,12 +968,20 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot):
         if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"]):
             raise Exception(model + " is not an acceptable model option. Acceptable options are: ",
                             "logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear")
+        
+    # Generate identifier and see if it's in the AIC data.frame
+    endpoint_id = chemical_name + " " + endpoint_name
+    if model == "best" and endpoint_id in (self.aic_df["bmdrc.Endpoint.ID"].tolist()) == False:
+        raise Exception(chemical_name + " and " + endpoint_id + " were not fit to models using the fit function. " + \
+                        "See .aic_df for options.")
 
     #####################
     ## CALCULATE CURVE ##
     #####################
 
     # Auto-select "best" model if user specifies 
+    if model == "best":
+        print("Working on it")
     
 
     
