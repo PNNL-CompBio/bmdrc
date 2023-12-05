@@ -955,13 +955,19 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     ## RUN CHECKS ##
     ################
 
-    # Check that chemical_name is an acceptable choice
-    if chemical_name in (self.df[self.chemical].unique().tolist()) == False:
-        raise Exception(chemical_name + " is not a recognized chemical_name.")
+    # If chemical name is all, then all model fits for a chemical will be returned
+    if chemical_name != "all":
+
+        # Check that chemical_name is an acceptable choice
+        if chemical_name in (self.df[self.chemical].unique().tolist()) == False:
+            raise Exception(chemical_name + " is not a recognized chemical_name.")
+        
+    # If endpoint_name is all, then all endpoints will be returned
+    if endpoint_name != "all":
     
-    # Check that endpoint_name is an acceptable choice 
-    if endpoint_name in (self.df[self.endpoint].unique().tolist()) == False:
-        raise Exception(endpoint_name + " is not a recognized endpoint_name.")
+        # Check that endpoint_name is an acceptable choice 
+        if endpoint_name in (self.df[self.endpoint].unique().tolist()) == False:
+            raise Exception(endpoint_name + " is not a recognized endpoint_name.")
 
     # If the user wants the "best" model fit, ensure that the "fit" function has been run
     if model == "best": 
