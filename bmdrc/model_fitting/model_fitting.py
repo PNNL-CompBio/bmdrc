@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+from astropy import astrostats
 from statsmodels.base.model import GenericLikelihoodModel
 
 import warnings
@@ -689,7 +690,7 @@ def select_and_run_models(self):
             "Log Probit": run_regression_model(sub_data, Log_Probit, log_probit_fun),
 
             ## Multistage ##
-            "Multistage": run_regression_model(sub_data, Multistage_2, multistage_2_fun),
+            "Multistage2": run_regression_model(sub_data, Multistage_2, multistage_2_fun),
 
             ## Quantal Linear ##
             "Quantal Linear": run_regression_model(sub_data, Quantal_Linear, quantal_linear_fun),
@@ -753,7 +754,8 @@ def calc_fit_statistics(self):
         return pd.Series([value, name])
     
     # Apply function
-    aic_df[['Min_AIC','Min_Model']] = aic_df[aic_df.columns.tolist()].apply(lambda x : min_aic(x), axis=1)
+    aic_df[['Min_AIC','Min_Model']] = aic_df[["Logistic", "Gamma", "Weibull", "Log Logistic", \
+                                              "Probit", "Log Probit", "Multistage", "Quantal Linear"]].apply(lambda x : min_aic(x), axis=1)
 
     # Save AIC df with minimum values computed
     self.aic_df = aic_df
@@ -941,7 +943,7 @@ def fit_the_models(self, models, fit_threshold, BMD_Measurements):
     self.report_model_fits = True 
 
 
-def gen_response_curve(self, chemical_name, endpoint_name, model, plot):
+def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     '''
     Generate the x and y coordinates of the curve, and optionally a plot 
     '''
@@ -979,10 +981,62 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot):
     ## CALCULATE CURVE ##
     #####################
 
-    # Auto-select "best" model if user specifies 
+    # Auto-select "best" model if user specifies, overwriting the model variable
     if model == "best":
-        print("Working on it")
+        model = self.aic_df[self.aic_df["bmdrc.Endpoint.ID"] == endpoint_id].drop(columns = "bmdrc.Endpoint.ID")["Min_Model"].tolist()[0].lower()
+
+    # Subset plate groups to the id
+    to_model = self.plate_groups[(self.plate_groups[self.chemical] == chemical_name) & 
+                                 (self.plate_groups[self.endpoint] == endpoint_name) &  
+                                 (self.plate_groups["bmdrc.filter"] == "Keep")]
+
+    # Pull only the columns that are needed
+    to_model = to_model[[self.concentration, "bmdrc.num.nonna", "bmdrc.num.affected"]]
     
+    # Summarize counts 
+    to_model = to_model.groupby(by = self.concentration, as_index = False).sum()
+
+    # Calculate fraction affected
+    to_model["bmdrc.frac.affected"] = to_model["bmdrc.num.affected"] / to_model["bmdrc.num.nonna"]
+
+    # Here is a function to build curves 
+    def gen_uneven_spacing(doses, int_steps = steps):
+        '''Generates ten steps of points between measurements'''
+        dose_samples = list()
+        for dose_index in range(len(doses) - 1):
+            dose_samples.extend(np.linspace(doses[dose_index],doses[dose_index + 1], int_steps).tolist())
+        return np.unique(dose_samples)
+    
+    # Calculate the x values
+    dose_x_vals = np.round(gen_uneven_spacing(to_model[self.concentration].tolist()), 4)
+    
+    # Extract model parameters
+    model_params = self.model_fits[endpoint_id][1][1]
+
+    # Make the resulting data.frame
+    curve = pd.DataFrame([dose_x_vals, quantal_linear_fun(dose_x_vals, model_params)]).T
+    curve.columns = ["Dose in uM", "Response"]
+
+    # Calculate confidence intervals
+    for row in range(len(to_model)):
+        CI = np.abs(astrostats.binom_conf_interval(to_model["bmdrc.num.affected"][row], to_model["bmdrc.num.nonna"][row], confidence_level = 0.95))
+        to_model["Low"][row] = np.round(CI[0], 8) 
+        to_model["High"][row] = np.round(CI[1], 8) 
+
+    ###########################
+    ## ADD PLOT IF NECESSARY ##
+    ###########################
+
+    # Save results 
+    if plot == False:
+        return curve, to_model
+    else: 
+        return curve, to_model
+
+
+
+    
+
 
     
 

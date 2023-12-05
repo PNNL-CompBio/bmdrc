@@ -62,8 +62,8 @@ class DataClass(object):
         fit_the_models(self, models, fit_threshold, BMD_Measurements)
 
     @abstractmethod
-    def response_curve(self, chemical_name, endpoint_name, model = "best", plot = True):
-        gen_response_curve(self, chemical_name, endpoint_name, model, plot)
+    def response_curve(self, chemical_name, endpoint_name, model = "best", plot = True, steps = 10):
+        gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps)
 
     ####################
     ## OUTPUT MODULES ##
