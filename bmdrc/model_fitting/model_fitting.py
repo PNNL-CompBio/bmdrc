@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-from astropy import astrostats
+import matplotlib.pyplot as plt
+from astropy import stats as astrostats
 from statsmodels.base.model import GenericLikelihoodModel
+from scipy.interpolate import make_interp_spline
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -755,7 +757,7 @@ def calc_fit_statistics(self):
     
     # Apply function
     aic_df[['Min_AIC','Min_Model']] = aic_df[["Logistic", "Gamma", "Weibull", "Log Logistic", \
-                                              "Probit", "Log Probit", "Multistage", "Quantal Linear"]].apply(lambda x : min_aic(x), axis=1)
+                                              "Probit", "Log Probit", "Multistage2", "Quantal Linear"]].apply(lambda x : min_aic(x), axis=1)
 
     # Save AIC df with minimum values computed
     self.aic_df = aic_df
@@ -788,7 +790,7 @@ def calc_fit_statistics(self):
         elif (Model == "Log Probit"):
             g_, alpha_, beta_ = params
             return(np.exp((stats.norm.ppf(BenchmarkResponse) - alpha_)/beta_))
-        elif (Model == "Multistage"):
+        elif (Model == "Multistage2"):
             g_, beta_, beta2_ = params
             return((-beta_ + np.sqrt((beta_**2) - (4*beta2_*np.log(1 - BenchmarkResponse))))/(2*beta2_))
         elif (Model == "Quantal Linear"):
@@ -845,7 +847,7 @@ def calc_fit_statistics(self):
                 ModelObj = Probit_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
             elif (Model == "Log Probit"):
                 ModelObj = Log_Probit_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
-            elif (Model == "Multistage"):
+            elif (Model == "Multistage2"):
                 ModelObj = Multistage_2_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and beta 1
             elif (Model == "Quantal Linear"):
                 ModelObj = Quantal_Linear_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is g
@@ -972,7 +974,7 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
                             "logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear")
         
     # Generate identifier and see if it's in the AIC data.frame
-    endpoint_id = chemical_name + " " + endpoint_name
+    endpoint_id = str(chemical_name) + " " + str(endpoint_name)
     if model == "best" and endpoint_id in (self.aic_df["bmdrc.Endpoint.ID"].tolist()) == False:
         raise Exception(chemical_name + " and " + endpoint_id + " were not fit to models using the fit function. " + \
                         "See .aic_df for options.")
@@ -1017,6 +1019,10 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     curve = pd.DataFrame([dose_x_vals, quantal_linear_fun(dose_x_vals, model_params)]).T
     curve.columns = ["Dose in uM", "Response"]
 
+    # Initialize Low and High columns
+    to_model["Low"] = float()
+    to_model["High"] = float()
+
     # Calculate confidence intervals
     for row in range(len(to_model)):
         CI = np.abs(astrostats.binom_conf_interval(to_model["bmdrc.num.affected"][row], to_model["bmdrc.num.nonna"][row], confidence_level = 0.95))
@@ -1030,10 +1036,27 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     # Save results 
     if plot == False:
         return curve, to_model
+    
     else: 
-        return curve, to_model
 
+        # Build figure
+        fig = plt.figure(figsize = (10, 5))
 
+        # Add points 
+        plt.scatter(to_model["conc"], to_model["bmdrc.frac.affected"], color = "black")
+
+        # Add curve
+        plt.plot(curve["Dose in uM"], curve["Response"], color = "black")
+
+        # Add confidence intervals
+        for row in range(len(to_model)):
+            plt.plot([to_model["conc"][row], to_model["conc"][row]], [to_model["Low"][row], to_model["High"][row]], color = "black")
+
+        # Add labels and make plot
+        plt.xlabel("Dose in uM")
+        plt.ylabel("Response (Proportion Affected)")
+
+        return curve, to_model, fig
 
     
 
