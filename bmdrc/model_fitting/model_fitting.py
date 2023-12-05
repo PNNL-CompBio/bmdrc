@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import re
 from astropy import stats as astrostats
 from statsmodels.base.model import GenericLikelihoodModel
 from scipy.interpolate import make_interp_spline
@@ -1020,8 +1021,8 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     curve.columns = ["Dose in uM", "Response"]
 
     # Initialize Low and High columns
-    to_model["Low"] = float()
-    to_model["High"] = float()
+    to_model["Low"] = np.nan
+    to_model["High"] = np.nan
 
     # Calculate confidence intervals
     for row in range(len(to_model)):
@@ -1029,15 +1030,23 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
         to_model["Low"][row] = np.round(CI[0], 8) 
         to_model["High"][row] = np.round(CI[1], 8) 
 
+    # Write a function to convert non-alphanumeric characters to underscores
+    def clean_up(x):
+        return re.sub('[^0-9a-zA-Z]+', '_', x)
+
+    # Save results 
+    curve_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_curve"
+    setattr(self, curve_name, curve)
+
+    ci_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_confidence_intervals"
+    setattr(self, ci_name, to_model)
+
     ###########################
     ## ADD PLOT IF NECESSARY ##
     ###########################
 
     # Save results 
-    if plot == False:
-        return curve, to_model
-    
-    else: 
+    if plot:
 
         # Build figure
         fig = plt.figure(figsize = (10, 5))
@@ -1056,7 +1065,7 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
         plt.xlabel("Dose in uM")
         plt.ylabel("Response (Proportion Affected)")
 
-        return curve, to_model, fig
+        return fig
 
     
 
