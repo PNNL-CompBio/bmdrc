@@ -911,7 +911,7 @@ def calc_fit_statistics(self):
     self.bmds = pd.DataFrame(BMDS_Model)
 
 
-def fit_the_models(self, models, fit_threshold, BMD_Measurements):
+def fit_the_models(self, gof_threshold, aic_threshold, BMD_Measurements):
     '''
     Fit the EPA recommended models to your dataset. 
     '''
@@ -934,7 +934,7 @@ def fit_the_models(self, models, fit_threshold, BMD_Measurements):
     removed_endpoints_stats(self)
 
     # 2. Fit models for endpoints that are not filtered out
-    select_and_run_models(self)
+    select_and_run_models(self, aic_threshold)
 
     # 3. Calculate statistics
     calc_fit_statistics(self)
@@ -1119,6 +1119,9 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
         # Add labels and make plot
         plt.xlabel("Dose in uM")
         plt.ylabel("Response (Proportion Affected)")
+
+        # Add title
+        plt.title("Chemical: " + str(chemical_name) + ", Endpoint: " + str(endpoint_name) + ", Model: " + model)
 
         return fig
 
