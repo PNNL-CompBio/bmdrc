@@ -976,7 +976,7 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
         except:
             raise Exception("Please run the .fit_models() function first to select a 'best' model.")
     else:
-        if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"]):
+        if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"] == False):
             raise Exception(model + " is not an acceptable model option. Acceptable options are: ",
                             "logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear")
         
@@ -985,6 +985,11 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     if model == "best" and endpoint_id in (self.aic_df["bmdrc.Endpoint.ID"].tolist()) == False:
         raise Exception(chemical_name + " and " + endpoint_id + " were not fit to models using the fit function. " + \
                         "See .aic_df for options.")
+    
+    # Set a best_fit parameter to track whether the "best" model was selected to run 
+    best_fit = False
+    if model == "best":
+        best_fit = True
 
     #####################
     ## CALCULATE CURVE ##
@@ -1008,7 +1013,7 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     # Calculate fraction affected
     to_model["bmdrc.frac.affected"] = to_model["bmdrc.num.affected"] / to_model["bmdrc.num.nonna"]
 
-    # Here is a function to build curves 
+    # Here is a function to build the x range for curves
     def gen_uneven_spacing(doses, int_steps = steps):
         '''Generates ten steps of points between measurements'''
         dose_samples = list()
@@ -1016,15 +1021,59 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
             dose_samples.extend(np.linspace(doses[dose_index],doses[dose_index + 1], int_steps).tolist())
         return np.unique(dose_samples)
     
-    # Calculate the x values
-    dose_x_vals = np.round(gen_uneven_spacing(to_model[self.concentration].tolist()), 4)
-    
-    # Extract model parameters
-    model_params = self.model_fits[endpoint_id][1][1]
+    # Build a function to generate the curve based on the model name
+    def build_curve(model):
 
-    # Make the resulting data.frame
-    curve = pd.DataFrame([dose_x_vals, quantal_linear_fun(dose_x_vals, model_params)]).T
-    curve.columns = ["Dose in uM", "Response"]
+        # Generate the dose x values 
+        dose_x_vals = np.round(gen_uneven_spacing(to_model[self.concentration].tolist()), 4)
+    
+        # Extract model parameters. If not fit, calculate parameters 
+        if best_fit:
+            model_params = self.model_fits[endpoint_id][1][1]
+        else:
+            if model == "logistic":
+                model_params = Logistic(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+            elif model == "gamma":
+                model_params = Gamma(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+            elif model == "weibull":
+                model_params = Weibull(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+            elif model == "log logistic":
+                model_params = Log_Logistic(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+            elif model == "probit":
+                model_params = Probit(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+            elif model == "log probit":
+                model_params = Log_Probit(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+            elif model == "multistage2":
+                model_params = Multistage_2(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+            elif model == "quantal linear":
+                model_params = Quantal_Linear(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+                
+        # Make the resulting data.frame
+        if model == "logistic":
+            curve = pd.DataFrame([dose_x_vals, logistic_fun(dose_x_vals, model_params)]).T
+        elif model == "gamma":
+            curve = pd.DataFrame([dose_x_vals, gamma_fun(dose_x_vals, model_params)]).T
+        elif model == "weibull":
+            curve = pd.DataFrame([dose_x_vals, weibull_fun(dose_x_vals, model_params)]).T
+        elif model == "log logistic":
+            curve = pd.DataFrame([dose_x_vals, log_logistic_fun(dose_x_vals, model_params)]).T
+        elif model == "probit":
+            curve = pd.DataFrame([dose_x_vals, probit_fun(dose_x_vals, model_params)]).T
+        elif model == "log probit":
+            curve = pd.DataFrame([dose_x_vals, log_probit_fun(dose_x_vals, model_params)]).T
+        elif model == "multistage2":
+            curve = pd.DataFrame([dose_x_vals, multistage_2_fun(dose_x_vals, model_params)]).T
+        elif model == "quantal linear":
+            curve = pd.DataFrame([dose_x_vals, quantal_linear_fun(dose_x_vals, model_params)]).T
+
+        # Rename curve columns
+        curve.columns = ["Dose in uM", "Response"]
+
+        # Return resulting curve
+        return curve
+    
+    # Calculate curve
+    curve = build_curve(model)
 
     # Initialize Low and High columns
     to_model["Low"] = np.nan
