@@ -627,9 +627,12 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
 
     # Add confidence intervals 
     for row in range(len(self.plate_groups)):
-        CI = np.abs(astrostats.binom_conf_interval(self.plate_groups["bmdrc.num.affected"][row], self.plate_groups["bmdrc.num.nonna"][row], confidence_level = 0.95))
-        self.plate_groups["Low"][row] = np.round(CI[0], 8) 
-        self.plate_groups["High"][row] = np.round(CI[1], 8) 
+        NumAffected = self.plate_groups["bmdrc.num.affected"][row]
+        NumNonNa = self.plate_groups["bmdrc.num.nonna"][row]
+        if NumNonNa != 0:
+            CI = np.abs(astrostats.binom_conf_interval(NumAffected, NumNonNa, confidence_level = 0.95))
+            self.plate_groups["Low"][row] = np.round(CI[0], 8) 
+            self.plate_groups["High"][row] = np.round(CI[1], 8) 
 
     # Pull dose_response
     dose_response = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]
@@ -728,17 +731,33 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
             aics[key] = models[key][4]
 
         ## Determine the best model
+        model_names = ["Logistic", "Gamma", "Weibull", "Log Logistic", "Probit",  "Log Probit", "Multistage2", "Quantal Linear"]
             
         # 1. Keep models within the goodness of fit threshold
         best_fits = [x[1] <= gof_threshold for x in p_values.items()]
-        
-        ipdb.set_trace()
+        best_fit_positions = [i for i, x in enumerate(best_fits) if x]
 
-        # Determine the best model
-        BestModel = min(aics, key=lambda k: aics[k]) 
+        # Fit no models if all the goodness of fits are below are 0.1, otherwise proceed
+        if (len(best_fit_positions) == 0):
+            model_results[endpoint] = [p_values, np.nan, np.nan, [np.nan for x in range(len(p_values))]]
 
-        # Return results 
-        model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
+        # Return the only model if there's only one 
+        elif (len(best_fit_positions) == 1):
+            BestModel = model_names[best_fit_positions]
+            model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
+
+        # If there is more than one model, then confirm the values are within CIs 
+        else: 
+
+            ipdb.set_trace()
+
+
+
+            # Determine the best model
+            BestModel = min(aics, key=lambda k: aics[k]) 
+
+            # Return results 
+            model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
 
     self.model_fits = model_results
 
