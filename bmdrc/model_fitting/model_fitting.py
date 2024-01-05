@@ -10,6 +10,8 @@ from scipy.interpolate import make_interp_spline
 import warnings
 warnings.filterwarnings('ignore')
 
+import ipdb
+
 __author__ = ["Paritosh Pande" , "David Degnan"]
 
 ############################
@@ -609,7 +611,7 @@ def removed_endpoints_stats(self):
         self.bmds_filtered = None
 
 
-def select_and_run_models(self):
+def select_and_run_models(self, gof_threshold, aic_threshold):
     '''
     Accessory function to fit_the_models. 
     This function fits all non-filtered endpoints to the EPA recommended 
@@ -618,6 +620,16 @@ def select_and_run_models(self):
 
     # Add fraction affected to plate groups 
     self.plate_groups["bmdrc.frac.affected"] = self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]
+
+    # Initialize Low and High columns
+    self.plate_groups["Low"] = np.nan
+    self.plate_groups["High"] = np.nan
+
+    # Add confidence intervals 
+    for row in range(len(self.plate_groups)):
+        CI = np.abs(astrostats.binom_conf_interval(self.plate_groups["bmdrc.num.affected"][row], self.plate_groups["bmdrc.num.nonna"][row], confidence_level = 0.95))
+        self.plate_groups["Low"][row] = np.round(CI[0], 8) 
+        self.plate_groups["High"][row] = np.round(CI[1], 8) 
 
     # Pull dose_response
     dose_response = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]
@@ -646,8 +658,13 @@ def select_and_run_models(self):
             # Now, calculate the chi squared value
             ChiSquared = ((NonNATotals / (PredictedValues * (1 - PredictedValues))) * (ExperimentalValues - PredictedValues)**2).sum()
 
+            # Calculate a p-value of fit
+            p_val = 1 - stats.chi2.sf(ChiSquared, len(NonNATotals) - len(Params)) 
+            if (p_val == 0): 
+                p_val = np.nan
+
             # Calculate a p-value of fit 
-            return(1 - stats.chi2.sf(ChiSquared, len(NonNATotals) - len(Params)))
+            return(p_val)
 
         # Regression model function
         def run_regression_model(sub_data, modelfun, fittedfun):
@@ -709,6 +726,13 @@ def select_and_run_models(self):
         aics = {}
         for key in models.keys():
             aics[key] = models[key][4]
+
+        ## Determine the best model
+            
+        # 1. Keep models within the goodness of fit threshold
+        best_fits = [x[1] <= gof_threshold for x in p_values.items()]
+        
+        ipdb.set_trace()
 
         # Determine the best model
         BestModel = min(aics, key=lambda k: aics[k]) 
@@ -801,7 +825,7 @@ def calc_fit_statistics(self):
             print(Model, "was not recognized as an acceptable model choice.")
 
     def Calculate_BMDL(Model, FittedModelObj, Data, BMD10, params, MaxIterations = 100, ToleranceThreshold = 1e-4):
-        '''Run BMDL Function Test'''
+        '''Calculate the benchmark dose lower confidence limit'''
 
         # Reformat data
         Data = Data[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()
@@ -911,7 +935,7 @@ def calc_fit_statistics(self):
     self.bmds = pd.DataFrame(BMDS_Model)
 
 
-def fit_the_models(self, gof_threshold, aic_threshold, BMD_Measurements):
+def fit_the_models(self, gof_threshold, aic_threshold):
     '''
     Fit the EPA recommended models to your dataset. 
     '''
@@ -934,7 +958,7 @@ def fit_the_models(self, gof_threshold, aic_threshold, BMD_Measurements):
     removed_endpoints_stats(self)
 
     # 2. Fit models for endpoints that are not filtered out
-    select_and_run_models(self, aic_threshold)
+    select_and_run_models(self, gof_threshold, aic_threshold)
 
     # 3. Calculate statistics
     calc_fit_statistics(self)
@@ -1074,16 +1098,6 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     
     # Calculate curve
     curve = build_curve(model)
-
-    # Initialize Low and High columns
-    to_model["Low"] = np.nan
-    to_model["High"] = np.nan
-
-    # Calculate confidence intervals
-    for row in range(len(to_model)):
-        CI = np.abs(astrostats.binom_conf_interval(to_model["bmdrc.num.affected"][row], to_model["bmdrc.num.nonna"][row], confidence_level = 0.95))
-        to_model["Low"][row] = np.round(CI[0], 8) 
-        to_model["High"][row] = np.round(CI[1], 8) 
 
     # Write a function to convert non-alphanumeric characters to underscores
     def clean_up(x):
