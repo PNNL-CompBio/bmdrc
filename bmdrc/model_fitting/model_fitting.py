@@ -670,7 +670,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
             return(p_val)
 
         # Regression model function
-        def run_regression_model(sub_data, modelfun, fittedfun):
+        def run_regression_model(sub_data, modelfun, fittedfun, modelname):
             '''Fit the regression model and return the parameters, fitted_values, and the p_value'''
 
             # Run the model
@@ -689,34 +689,34 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
             AIC = -2*model.fit().llf + (2 * len(model_params))
 
             # Return a list
-            return([model, model_params, model_fittedvals, model_pval, AIC])
+            return([model, model_params, model_fittedvals, model_pval, AIC, modelname])
 
         # Run regression models in a dictionary
         models = {
 
             ## Logistic ##
-            "Logistic": run_regression_model(sub_data, Logistic, logistic_fun),
+            "Logistic": run_regression_model(sub_data, Logistic, logistic_fun, "Logistic"),
 
             ## Gamma ## 
-            "Gamma": run_regression_model(sub_data, Gamma, gamma_fun),
+            "Gamma": run_regression_model(sub_data, Gamma, gamma_fun, "Gamma"),
 
             ## Weibull ##
-            "Weibull": run_regression_model(sub_data, Weibull, weibull_fun),
+            "Weibull": run_regression_model(sub_data, Weibull, weibull_fun, "Weibull"),
 
             ## Log-Logistic ##
-            "Log Logistic": run_regression_model(sub_data, Log_Logistic, log_logistic_fun),
+            "Log Logistic": run_regression_model(sub_data, Log_Logistic, log_logistic_fun, "Log Logistic"),
 
             ## Probit ##
-            "Probit": run_regression_model(sub_data, Probit, probit_fun),
+            "Probit": run_regression_model(sub_data, Probit, probit_fun, "Probit"),
 
             ## Log-Probit ##
-            "Log Probit": run_regression_model(sub_data, Log_Probit, log_probit_fun),
+            "Log Probit": run_regression_model(sub_data, Log_Probit, log_probit_fun, "Log Probit"),
 
             ## Multistage ##
-            "Multistage2": run_regression_model(sub_data, Multistage_2, multistage_2_fun),
+            "Multistage2": run_regression_model(sub_data, Multistage_2, multistage_2_fun, "Multistage2"),
 
             ## Quantal Linear ##
-            "Quantal Linear": run_regression_model(sub_data, Quantal_Linear, quantal_linear_fun),
+            "Quantal Linear": run_regression_model(sub_data, Quantal_Linear, quantal_linear_fun, "Quantal Linear"),
 
         }
 
@@ -749,8 +749,30 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
         # If there is more than one model, then confirm the values are within CIs 
         else: 
 
-            ipdb.set_trace()
+            # Pull and run candidate models 
+            candidate_models = [model_names[x] for x in best_fit_positions]
+            candidate_models_res = [models[x] for x in candidate_models]
 
+            # 1. Gather AIC values. If more than one model is within the recommended AIC threshold, return the model with lowest BMDL. 
+            AICs = [x[4] for x in candidate_models_res]
+            AIC_diff = [np.abs(x - min(AICs)) for x in AICs]
+
+            # Calculate BMD values 
+            BMD10s = [Calculate_BMD(Model = x[5], params = x[1]) for x in candidate_models_res]
+
+            # Calculate BMDLs
+            BMDLs = [Calculate_BMDL(self.concentration,    
+                                    Model = candidate_models_res[x][5],          
+                                    FittedModelObj= candidate_models_res[x][0],   
+                                    Data = sub_data, 
+                                    BMD10 = BMD10s[x], 
+                                    params = candidate_models_res[x][1]) for x in range(len(candidate_models_res))]
+
+
+
+            # Pull confidence interval ranges 
+
+            ipdb.set_trace()
 
 
             # Determine the best model
@@ -760,6 +782,116 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
             model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
 
     self.model_fits = model_results
+
+##############################
+## CALCULATE BENCHMARK DOSE ##
+##############################
+
+def Calculate_BMD(Model, params, BenchmarkResponse = 0.1):
+    '''Calculate a benchmark dose'''
+
+    # For each model, extract the parameters and run the calculations
+    if (Model == "Logistic"): 
+        alpha_, beta_ = params
+        return(np.log((1 + np.exp(-alpha_)*BenchmarkResponse)/(1-BenchmarkResponse))/beta_)
+    elif (Model == "Gamma"):
+        g_, alpha_, beta_ = params
+        return(stats.gamma.ppf(BenchmarkResponse, alpha_, scale = 1/beta_))
+    elif (Model == "Weibull"):
+        g_, alpha_, beta_ = params
+        return((-np.log(1 - BenchmarkResponse)/beta_)**(1/alpha_))
+    elif (Model == "Log Logistic"):
+        g_, alpha_, beta_ = params
+        return(np.exp((np.log(BenchmarkResponse/(1-BenchmarkResponse)) - alpha_)/beta_))
+    elif (Model == "Probit"):
+        alpha_, beta_ = params
+        p_0 = stats.norm.cdf(alpha_)
+        p_BMD = p_0 + (1 - p_0)*BenchmarkResponse
+        return((stats.norm.ppf(p_BMD) - alpha_)/beta_)
+    elif (Model == "Log Probit"):
+        g_, alpha_, beta_ = params
+        return(np.exp((stats.norm.ppf(BenchmarkResponse) - alpha_)/beta_))
+    elif (Model == "Multistage2"):
+        g_, beta_, beta2_ = params
+        return((-beta_ + np.sqrt((beta_**2) - (4*beta2_*np.log(1 - BenchmarkResponse))))/(2*beta2_))
+    elif (Model == "Quantal Linear"):
+        g_, beta_ = params
+        return(-np.log(1 - BenchmarkResponse)/beta_)
+    else:
+        print(Model, "was not recognized as an acceptable model choice.")
+
+#########################################################
+## CALCULATE BENCHMARK DOSE LOWER 95% CONFIDENCE LIMIT ##
+#########################################################
+        
+def Calculate_BMDL(conc_variable, Model, FittedModelObj, Data, BMD10, params, MaxIterations = 100, ToleranceThreshold = 1e-4):
+    '''Calculate the benchmark dose lower confidence limit'''
+
+    # Reformat data
+    Data = Data[[conc_variable, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()
+
+    # Define an initial low and high threshold
+    BMD_Low = BMD10/10
+    BMD_High = BMD10
+
+    # Start a counter and set tolerance to 1
+    Iteration_Count = 0
+    Tolerance = 1
+
+    # Set a LLV Threhold
+    BMDL_LLV_Thresh = FittedModelObj.fit().llf - stats.chi2.ppf(0.9, 1)/2
+
+    # Start a while condition loop
+    while ((Tolerance > ToleranceThreshold) and (Iteration_Count <= MaxIterations)):
+        
+        # Add to the iteration counters 
+        Iteration_Count+=1
+
+        # If maximum iterations are reached, set BMDL to NA and break
+        if (Iteration_Count == MaxIterations):
+            BMDL = np.nan
+            break
+
+        # BMDL should be the mid value between the low and high estimate
+        BMDL = (BMD_Low + BMD_High)/2
+        ModelObj = np.nan
+
+        # Select the correct BMD model
+        if (Model == "Logistic"):
+            ModelObj = Logistic_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
+        elif (Model == "Gamma"):
+            ModelObj = Gamma_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+        elif (Model == "Weibull"):
+            ModelObj = Weibull_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+        elif (Model == "Log Logistic"):
+            try:
+                ModelObj = Log_Logistic_BMD(Data).profile_ll_fit([params[0], params[2], BMDL]) # Value is g and beta
+            except:
+                return(np.nan)
+        elif (Model == "Probit"):
+            ModelObj = Probit_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
+        elif (Model == "Log Probit"):
+            ModelObj = Log_Probit_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+        elif (Model == "Multistage2"):
+            ModelObj = Multistage_2_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and beta 1
+        elif (Model == "Quantal Linear"):
+            ModelObj = Quantal_Linear_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is g
+        else:
+            print(Model, "was not recognized as an acceptable model choice.")
+
+        # Pull the llf 
+        LLF = ModelObj.llf
+
+        # If the calculated LLF is not within the threshold, set high to BMDL and run again 
+        if((LLF - BMDL_LLV_Thresh) > 0):
+            BMD_High = BMDL
+        # Otherwise, set low to BMDL
+        else:
+            BMD_Low = BMDL
+
+        Tolerance = abs(LLF - BMDL_LLV_Thresh)
+
+    return(BMDL)
 
 def calc_fit_statistics(self):
     '''
@@ -806,112 +938,6 @@ def calc_fit_statistics(self):
     # Save AIC df with minimum values computed
     self.aic_df = aic_df
 
-    ##############################
-    ## CALCULATE BENCHMARK DOSE ##
-    ##############################
-
-    def Calculate_BMD(Model, params, BenchmarkResponse = 0.1):
-        '''Calculate a benchmark dose'''
-
-        # For each model, extract the parameters and run the calculations
-        if (Model == "Logistic"): 
-            alpha_, beta_ = params
-            return(np.log((1 + np.exp(-alpha_)*BenchmarkResponse)/(1-BenchmarkResponse))/beta_)
-        elif (Model == "Gamma"):
-            g_, alpha_, beta_ = params
-            return(stats.gamma.ppf(BenchmarkResponse, alpha_, scale = 1/beta_))
-        elif (Model == "Weibull"):
-            g_, alpha_, beta_ = params
-            return((-np.log(1 - BenchmarkResponse)/beta_)**(1/alpha_))
-        elif (Model == "Log Logistic"):
-            g_, alpha_, beta_ = params
-            return(np.exp((np.log(BenchmarkResponse/(1-BenchmarkResponse)) - alpha_)/beta_))
-        elif (Model == "Probit"):
-            alpha_, beta_ = params
-            p_0 = stats.norm.cdf(alpha_)
-            p_BMD = p_0 + (1 - p_0)*BenchmarkResponse
-            return((stats.norm.ppf(p_BMD) - alpha_)/beta_)
-        elif (Model == "Log Probit"):
-            g_, alpha_, beta_ = params
-            return(np.exp((stats.norm.ppf(BenchmarkResponse) - alpha_)/beta_))
-        elif (Model == "Multistage2"):
-            g_, beta_, beta2_ = params
-            return((-beta_ + np.sqrt((beta_**2) - (4*beta2_*np.log(1 - BenchmarkResponse))))/(2*beta2_))
-        elif (Model == "Quantal Linear"):
-            g_, beta_ = params
-            return(-np.log(1 - BenchmarkResponse)/beta_)
-        else:
-            print(Model, "was not recognized as an acceptable model choice.")
-
-    def Calculate_BMDL(Model, FittedModelObj, Data, BMD10, params, MaxIterations = 100, ToleranceThreshold = 1e-4):
-        '''Calculate the benchmark dose lower confidence limit'''
-
-        # Reformat data
-        Data = Data[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()
-
-        # Define an initial low and high threshold
-        BMD_Low = BMD10/10
-        BMD_High = BMD10
-
-        # Start a counter and set tolerance to 1
-        Iteration_Count = 0
-        Tolerance = 1
-
-        # Set a LLV Threhold
-        BMDL_LLV_Thresh = FittedModelObj.fit().llf - stats.chi2.ppf(0.9, 1)/2
-
-        # Start a while condition loop
-        while ((Tolerance > ToleranceThreshold) and (Iteration_Count <= MaxIterations)):
-            
-            # Add to the iteration counters 
-            Iteration_Count+=1
-
-            # If maximum iterations are reached, set BMDL to NA and break
-            if (Iteration_Count == MaxIterations):
-                BMDL = np.nan
-                break
-
-            # BMDL should be the mid value between the low and high estimate
-            BMDL = (BMD_Low + BMD_High)/2
-            ModelObj = np.nan
-
-            # Select the correct BMD model
-            if (Model == "Logistic"):
-                ModelObj = Logistic_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
-            elif (Model == "Gamma"):
-                ModelObj = Gamma_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
-            elif (Model == "Weibull"):
-                ModelObj = Weibull_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
-            elif (Model == "Log Logistic"):
-                try:
-                    ModelObj = Log_Logistic_BMD(Data).profile_ll_fit([params[0], params[2], BMDL]) # Value is g and beta
-                except:
-                    return(np.nan)
-            elif (Model == "Probit"):
-                ModelObj = Probit_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
-            elif (Model == "Log Probit"):
-                ModelObj = Log_Probit_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
-            elif (Model == "Multistage2"):
-                ModelObj = Multistage_2_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and beta 1
-            elif (Model == "Quantal Linear"):
-                ModelObj = Quantal_Linear_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is g
-            else:
-                print(Model, "was not recognized as an acceptable model choice.")
-
-            # Pull the llf 
-            LLF = ModelObj.llf
-
-            # If the calculated LLF is not within the threshold, set high to BMDL and run again 
-            if((LLF - BMDL_LLV_Thresh) > 0):
-                BMD_High = BMDL
-            # Otherwise, set low to BMDL
-            else:
-                BMD_Low = BMDL
-
-            Tolerance = abs(LLF - BMDL_LLV_Thresh)
-
-        return(BMDL)
-
     # Build BMD table for fitted data 
     BMDS_Model = []
 
@@ -942,7 +968,7 @@ def calc_fit_statistics(self):
             "bmdrc.Endpoint.ID": id,
             "Model": Model,
             "BMD10": BMD10, 
-            "BMDL": Calculate_BMDL(Model, FittedModelObj, Data, BMD10, params),
+            "BMDL": Calculate_BMDL(self.concentration, Model, FittedModelObj, Data, BMD10, params),
             "BMD50": Calculate_BMD(Model, params, 0.5),
             "AUC": AUC,
             "Min_Dose": Min_Dose,
