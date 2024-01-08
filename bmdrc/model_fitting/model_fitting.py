@@ -755,7 +755,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
 
             # 1. Gather AIC values. If more than one model is within the recommended AIC threshold, return the model with lowest BMDL. 
             AICs = [x[4] for x in candidate_models_res]
-            AIC_diff = [np.abs(x - min(AICs)) for x in AICs]
+            AIC_pass = [np.abs(x - min(AICs)) > aic_threshold for x in AICs]
 
             # Calculate BMD values 
             BMD10s = [Calculate_BMD(Model = x[5], params = x[1]) for x in candidate_models_res]
