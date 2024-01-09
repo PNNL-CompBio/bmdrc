@@ -739,11 +739,15 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
 
         # Fit no models if all the goodness of fits are below are 0.1, otherwise proceed
         if (len(best_fit_positions) == 0):
-            model_results[endpoint] = [p_values, np.nan, np.nan, [np.nan for x in range(len(p_values))]]
+            if hasattr(self, "failed_pvalue_test") == False:
+                self.failed_pvalue_test = [endpoint]
+            else:
+                self.failed_pvalue_test.append(endpoint)
+            continue
 
         # Return the only model if there's only one 
         elif (len(best_fit_positions) == 1):
-            BestModel = model_names[best_fit_positions]
+            BestModel = model_names[best_fit_positions[0]]
             model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
 
         # If there is more than one model, then confirm the values are within CIs 
@@ -753,33 +757,29 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
             candidate_models = [model_names[x] for x in best_fit_positions]
             candidate_models_res = [models[x] for x in candidate_models]
 
-            # 1. Gather AIC values. If more than one model is within the recommended AIC threshold, return the model with lowest BMDL. 
+            # 1. Gather AIC values. If only one is within the threshold, return value.
             AICs = [x[4] for x in candidate_models_res]
-            AIC_pass = [np.abs(x - min(AICs)) > aic_threshold for x in AICs]
+            AIC_pass = [np.abs(x - min(AICs)) < aic_threshold for x in AICs]
 
-            # Calculate BMD values 
-            BMD10s = [Calculate_BMD(Model = x[5], params = x[1]) for x in candidate_models_res]
+            # Return singular model if only one true 
+            if (sum(AIC_pass) == 1):
+                BestModel = candidate_models[[x for x in np.where(AIC_pass)[0]][0]]
+                model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
 
-            # Calculate BMDLs
-            BMDLs = [Calculate_BMDL(self.concentration,    
-                                    Model = candidate_models_res[x][5],          
-                                    FittedModelObj= candidate_models_res[x][0],   
-                                    Data = sub_data, 
-                                    BMD10 = BMD10s[x], 
-                                    params = candidate_models_res[x][1]) for x in range(len(candidate_models_res))]
-
-
-
-            # Pull confidence interval ranges 
-
-            ipdb.set_trace()
-
-
-            # Determine the best model
-            BestModel = min(aics, key=lambda k: aics[k]) 
-
-            # Return results 
-            model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
+            else: 
+                
+                # 2. Report lowest BMDL.
+                BMD10s = [Calculate_BMD(Model = x[5], params = x[1]) for x in candidate_models_res]
+                BMDLs = [Calculate_BMDL(self.concentration,    
+                                        Model = candidate_models_res[x][5],          
+                                        FittedModelObj= candidate_models_res[x][0],   
+                                        Data = sub_data, 
+                                        BMD10 = BMD10s[x], 
+                                        params = candidate_models_res[x][1]) for x in range(len(candidate_models_res))]
+                if (endpoint == "3757 ANY24"):
+                    ipdb.set_trace()
+                BestModel = candidate_models[np.argmin(BMDLs)]
+                model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
 
     self.model_fits = model_results
 
@@ -930,14 +930,14 @@ def calc_fit_statistics(self):
         name = sr.idxmin()
         value = sr[name]
         return pd.Series([value, name])
-    
-    # Apply function
-    aic_df[['Min_AIC','Min_Model']] = aic_df[["Logistic", "Gamma", "Weibull", "Log Logistic", \
-                                              "Probit", "Log Probit", "Multistage2", "Quantal Linear"]].apply(lambda x : min_aic(x), axis=1)
 
-    # Save AIC df with minimum values computed
+    # Save AIC df 
     self.aic_df = aic_df
 
+    #####################
+    ## BUILD BMD TABLE ##
+    #####################
+    
     # Build BMD table for fitted data 
     BMDS_Model = []
 
@@ -1074,7 +1074,7 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
                                  (self.plate_groups["bmdrc.filter"] == "Keep")]
 
     # Pull only the columns that are needed
-    to_model = to_model[[self.concentration, "bmdrc.num.nonna", "bmdrc.num.affected"]]
+    to_model = to_model[[self.concentration, "bmdrc.num.nonna", "bmdrc.num.affected", "Low", "High"]]
     
     # Summarize counts 
     to_model = to_model.groupby(by = self.concentration, as_index = False).sum()
