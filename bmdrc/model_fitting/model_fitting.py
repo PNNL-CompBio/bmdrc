@@ -611,7 +611,7 @@ def removed_endpoints_stats(self):
         self.bmds_filtered = None
 
 
-def select_and_run_models(self, gof_threshold, aic_threshold):
+def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
     '''
     Accessory function to fit_the_models. 
     This function fits all non-filtered endpoints to the EPA recommended 
@@ -734,7 +734,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
         model_names = ["Logistic", "Gamma", "Weibull", "Log Logistic", "Probit",  "Log Probit", "Multistage2", "Quantal Linear"]
             
         # 1. Keep models within the goodness of fit threshold
-        best_fits = [x[1] <= gof_threshold for x in p_values.items()]
+        best_fits = [x[1] >= gof_threshold for x in p_values.items()]
         best_fit_positions = [i for i, x in enumerate(best_fits) if x]
 
         # Fit no models if all the goodness of fits are below are 0.1, otherwise proceed
@@ -750,15 +750,22 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
             BestModel = model_names[best_fit_positions[0]]
             model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
 
-        # If there is more than one model, then confirm the values are within CIs 
+        # If there is more than one model, find equivalents with AIC. The go the 
+        # "lowest BMDL" or "combined" route.
         else: 
 
             # Pull and run candidate models 
             candidate_models = [model_names[x] for x in best_fit_positions]
             candidate_models_res = [models[x] for x in candidate_models]
 
-            # 1. Gather AIC values. If only one is within the threshold, return value.
+            # Gather AIC values. If only one is within the threshold, return value.
             AICs = [x[4] for x in candidate_models_res]
+            AICs = np.nan_to_num(AICs)
+
+            # Debug the inf AIC values, and add a BMDLs measurement section 
+            # if endpoint == "3863 MUSC":
+            #   ipdb.set_trace()
+
             AIC_pass = [np.abs(x - min(AICs)) < aic_threshold for x in AICs]
 
             # Return singular model if only one true 
@@ -767,8 +774,12 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
                 model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
 
             else: 
-                
-                # 2. Report lowest BMDL.
+
+                # Add a combined route if desired. This will just add the combined model. 
+                if (model_selection == "combined"):
+                    raise Exception("The 'combined' option is not currently implemented.")
+
+                # Now calculate the lowest BMDL
                 BMD10s = [Calculate_BMD(Model = x[5], params = x[1]) for x in candidate_models_res]
                 BMDLs = [Calculate_BMDL(self.concentration,    
                                         Model = candidate_models_res[x][5],          
@@ -776,9 +787,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold):
                                         Data = sub_data, 
                                         BMD10 = BMD10s[x], 
                                         params = candidate_models_res[x][1]) for x in range(len(candidate_models_res))]
-                if (endpoint == "3757 ANY24"):
-                    ipdb.set_trace()
-                BestModel = candidate_models[np.argmin(BMDLs)]
+                BestModel = candidate_models[np.nanargmin(BMDLs)]
                 model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
 
     self.model_fits = model_results
@@ -980,10 +989,42 @@ def calc_fit_statistics(self):
     self.bmds = pd.DataFrame(BMDS_Model)
 
 
-def fit_the_models(self, gof_threshold, aic_threshold):
+def fit_the_models(self, gof_threshold, aic_threshold, model_selection):
     '''
     Fit the EPA recommended models to your dataset. 
+
+    model_selection: Models are selected based on the EPA guidance that the
+    goodness of fit p_value be greater than 0.1. From there, a combination of 
+    EPA guidance and [https://journals.sagepub.com/doi/10.1177/0049124104268644] 
+    recommends AICs within 2 of the lowest AIC score as equivalent fits. "lowest BMDL"
+    follows the EPA guidance of then selecting the model with the lowest BMDL,
+    while "combined" follows the EPA guidance of a multi-model approach to 
+    calculating the benchmark dose. 
     '''
+
+    ##################
+    ## CHECK INPUTS ##
+    ##################
+
+    # Assert that gof_threshold is a float
+    try:
+        gof_threshold = float(gof_threshold)
+    except ValueError:
+        raise Exception("gof_threshold must be a float.")
+    
+    # GOF threshold must be greater than 0 or less than 1
+    if gof_threshold < 0 or gof_threshold > 1:
+        raise Exception("gof_threshold must be larger than 0 or less than 1.")
+    
+    # Assert that AIC threshold is a positive numeric
+    try:
+        aic_threshold = np.abs(float(aic_threshold))
+    except ValueError:
+        raise Exception("aic_threshold must be a float.")
+    
+    # Assert that model_selection is either "lowest BMDL" or "combined"
+    if (model_selection != "lowest BMDL" and model_selection != "combined"):
+        raise Exception("Currently only 'lowest BMDL' and 'combined' are supported for model_selection")
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -1003,7 +1044,7 @@ def fit_the_models(self, gof_threshold, aic_threshold):
     removed_endpoints_stats(self)
 
     # 2. Fit models for endpoints that are not filtered out
-    select_and_run_models(self, gof_threshold, aic_threshold)
+    select_and_run_models(self, gof_threshold, aic_threshold, model_selection)
 
     # 3. Calculate statistics
     calc_fit_statistics(self)
@@ -1185,9 +1226,3 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
         return fig
 
     
-
-
-    
-
-
-

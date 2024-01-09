@@ -58,8 +58,8 @@ class DataClass(object):
     ###########################
 
     @abstractmethod
-    def fit_models(self, gof_threshold = 0.1, aic_threshold = 2):
-        fit_the_models(self, gof_threshold, aic_threshold)
+    def fit_models(self, gof_threshold = 0.1, aic_threshold = 2, model_selection = "lowest BMDL"):
+        fit_the_models(self, gof_threshold, aic_threshold, model_selection)
 
     @abstractmethod
     def response_curve(self, chemical_name, endpoint_name, model = "best", plot = True, steps = 10):
