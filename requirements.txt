@@ -5,3 +5,4 @@ astropy
 argparse
 statsmodels
 matplotlib
+datetime
