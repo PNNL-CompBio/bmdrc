@@ -10,6 +10,8 @@ from scipy.interpolate import make_interp_spline
 import warnings
 warnings.filterwarnings('ignore')
 
+import ipdb
+
 __author__ = ["Paritosh Pande" , "David Degnan"]
 
 ############################
@@ -194,6 +196,14 @@ class Weibull(GenericLikelihoodModel):
 
             alpha_0 = betas[1]
             beta_0 = np.exp(betas[0])
+
+            # Fix python nested lists, since it has no easy unlist() function like in R
+            if (isinstance(g_0, np.ndarray)):
+                g_0 = g_0[0]
+            if (isinstance(alpha_0, np.ndarray)):
+                alpha_0 = alpha_0[0]
+            if (isinstance(beta_0, np.ndarray)):
+                beta_0 = beta_0[0]
 
             start_params = np.array([g_0, alpha_0, beta_0])
 

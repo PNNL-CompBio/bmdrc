@@ -187,7 +187,7 @@ def min_concentration_plot(min_concentration_df):
 
     plt.bar(x = [x for x in range(len(min_concentration_df))], height = min_concentration_df["Count"], 
             edgecolor = "black", tick_label = min_concentration_df["NumConc"],
-            color = color_choices, label = colors)
+            color = color_choices, label = min_concentration_df["Filter"])
     plt.title("Counts of the number of concentrations per chemical and endpoint")
     plt.xlabel("Number of Concentrations")
     plt.ylabel("Total")
@@ -242,7 +242,7 @@ def min_concentration(self, count, apply, diagnostic_plot):
     ConcCount = self.plate_groups.loc[self.plate_groups["bmdrc.filter"] == "Keep", ["bmdrc.Endpoint.ID", self.concentration]].groupby("bmdrc.Endpoint.ID").nunique().reset_index().rename(columns = {self.concentration:"Count"}).sort_values(by = "Count")
 
     # Get summary counts of counts
-    ConcCountSum = ConcCount["Count"].value_counts().reset_index().rename(columns = {"index":"NumConc"}).sort_values(["NumConc"])
+    ConcCountSum = ConcCount["Count"].value_counts().reset_index().rename(columns = {"count":"NumConc"}).sort_values(["NumConc"])
 
     # Keep all by default
     ConcCountSum["Filter"] = "Keep"

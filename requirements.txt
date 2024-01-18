@@ -5,4 +5,3 @@ astropy==6.0.0
 argparse
 statsmodels==0.14.1
 matplotlib==3.8.2
-datetime==5.4
