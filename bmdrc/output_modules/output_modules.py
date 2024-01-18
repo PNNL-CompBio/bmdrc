@@ -49,6 +49,5 @@ def benchmark_dose(self, path):
     
     self.output_res_benchmark_dose = BMDS_Final
 
-def report(self, outpath, title = "Benchmark Dose Response Curves", curve_plots = False):
-    command = "quarto render /Users/degn400/Git_Repos/bmdrc/bmdrc/output_modules/bmdrc.qmd -o outpath -P thedata:self -P titleName:title -P curve_plots:curvePlots"
-    os.system(command)
+def report(self):
+    return NULL
