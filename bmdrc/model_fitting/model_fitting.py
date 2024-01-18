@@ -10,8 +10,6 @@ from scipy.interpolate import make_interp_spline
 import warnings
 warnings.filterwarnings('ignore')
 
-import ipdb
-
 __author__ = ["Paritosh Pande" , "David Degnan"]
 
 ############################

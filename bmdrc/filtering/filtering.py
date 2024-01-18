@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+import ipdb
+
 __author__ = "David Degnan"
 
 def make_plate_groups(self):
@@ -13,9 +15,9 @@ def make_plate_groups(self):
 
     # If there is a bmdrc well id, drop it
     if "bmdrc.Well.ID" in self.df.columns.tolist():
-        self.plate_groups = self.df.drop([self.well, "bmdrc.Well.ID"], 1).groupby(by = [self.chemical, self.concentration, self.plate, self.endpoint], as_index = False)
+        self.plate_groups = self.df.drop([self.well, "bmdrc.Well.ID"], axis = 1).groupby(by = [self.chemical, self.concentration, self.plate, self.endpoint], as_index = False)
     else:
-        self.plate_groups = self.df.drop([self.well], 1).groupby(by = [self.chemical, self.concentration, self.plate, self.endpoint], as_index = False)
+        self.plate_groups = self.df.drop([self.well], axis = 1).groupby(by = [self.chemical, self.concentration, self.plate, self.endpoint], as_index = False)
         
     # Get the number of samples per group
     num_tot_samples = self.plate_groups.size().rename(columns = {"size": "bmdrc.num.tot"})
@@ -77,7 +79,7 @@ def negative_control_plot(neg_control_df):
 
     plt.bar(x = [x for x in range(len(neg_control_df))], height = neg_control_df["Count"], 
             edgecolor = "black", tick_label = np.round(neg_control_df["Response"], 4),
-            color = color_choices, label = colors)
+            color = color_choices, label = neg_control_df["Filter"])
     plt.title("Counts of proportional responses per plate, endpoint, and chemical group")
     plt.xlabel("Proportional response in negative controls")
     plt.ylabel("Count")
@@ -136,7 +138,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
     NegControls = self.plate_groups[self.plate_groups[self.concentration] == 0]
 
     # Calculate responses in negative controls
-    NegControlRes = pd.DataFrame((NegControls["bmdrc.num.affected"] / NegControls["bmdrc.num.nonna"])).value_counts().rename_axis("Response").reset_index().rename(columns = {0:"Count"}).sort_values(by = ["Response"]).reset_index(drop=True)
+    NegControlRes = pd.DataFrame((NegControls["bmdrc.num.affected"] / NegControls["bmdrc.num.nonna"])).value_counts().rename_axis("Response").reset_index().rename(columns = {"count":"Count"}).sort_values(by = ["Response"]).reset_index(drop=True)
     
     # Multiply Response by 100 to make it a percentage
     NegControlRes["Response"] = NegControlRes["Response"] * 100

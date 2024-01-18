@@ -6,7 +6,7 @@ from abc import abstractmethod
 from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
 from ..filtering import make_plate_groups, negative_control, min_concentration, correlation_score
 from ..model_fitting import fit_the_models, gen_response_curve
-from ..output_modules import benchmark_dose, model_fit_metrics
+from ..output_modules import benchmark_dose, report
 
 __author__ = "David Degnan"
 
@@ -74,8 +74,9 @@ class DataClass(object):
         benchmark_dose(self, path)
 
     @abstractmethod
-    def output_model_fit_metrics(self, path = None):
-        model_fit_metrics(self, path)
+    def render_report(self, outpath, title = "Benchmark Dose Response Curves", curve_plots = False):
+        report(self, outpath, title, curve_plots)
+
 
 
 class BinaryClass(DataClass):

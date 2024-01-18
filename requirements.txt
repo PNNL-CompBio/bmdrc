@@ -1,8 +1,8 @@
-pandas
-numpy
-scipy
-astropy
+pandas==2.1.4
+numpy==1.26.2
+scipy==1.11.4
+astropy==6.0.0
 argparse
-statsmodels
-matplotlib
-datetime
+statsmodels==0.14.1
+matplotlib==3.8.2
+datetime==5.4

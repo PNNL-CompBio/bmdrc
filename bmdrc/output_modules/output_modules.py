@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from astropy import stats as astrostats
+import os
 
 __author__ = "David Degnan"
 
@@ -48,8 +49,6 @@ def benchmark_dose(self, path):
     
     self.output_res_benchmark_dose = BMDS_Final
 
-def model_fit_metrics(self, path):
-    
-    if path is None:
-
-        return None
+def report(self, outpath, title = "Benchmark Dose Response Curves", curve_plots = False):
+    command = "quarto render ./bmdrc.qmd -o outpath -P thedata:self -P titleName:title -P curve_plots:curvePlots"
+    os.system(command)

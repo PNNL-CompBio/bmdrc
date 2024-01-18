@@ -1,5 +1,5 @@
 ---
-title: Benchmark Dose Response Curves
+title: `{python} titleName`
 format:
     html:
         code-fold: true
@@ -9,12 +9,27 @@ jupyter: python3
 <hr>
 
 ```{python}
+#| tags: [parameters]
+theData = None
+titleName = None
+curvePlots = FALSE
+```
+
+```{python}
 #| echo: false
 # Load Libraries 
 import sys
+import bmdrc
+import pickle
 ```
 
 ## Import
+
+Benchmark dose data was uploaded in format.
+
+```{python}
+print(thedata.format)
+```
 
 ## Pre-Processing
 
@@ -23,6 +38,11 @@ import sys
 ## Model Fitting
 
 ## Notebook Details 
+
+```{python}
+import sys
+print(sys.executable)
+```
 
 This notebook was built using `{python} sys.executable`
 
