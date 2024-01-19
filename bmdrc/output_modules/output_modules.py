@@ -49,5 +49,95 @@ def benchmark_dose(self, path):
     
     self.output_res_benchmark_dose = BMDS_Final
 
-def report(self):
-    return NULL
+def report(self, out_path):
+
+    #####################################
+    ## PULL INPUT DATA CHARACTERISTICS ##
+    #####################################
+
+    out_string = "# Benchmark Dose Curves\n\n" + \
+    "## Input Data\n\n" + \
+    "A **binary class** object was created using data in **" + str(self.format) + "** format." + \
+    " The following column names were set:\n\n" + \
+    "|Parameter|Column Name|\n" + \
+    "|---------|-----------|\n" + \
+    "|Chemical|" + str(self.chemical) + "|\n" + \
+    "|Plate|" + str(self.plate) + "|\n" + \
+    "|Well|" + str(self.well) + "|\n" + \
+    "|Concentration|"  + str(self.concentration) + "|\n" + \
+    "|Endpoint|"  + str(self.endpoint) + "|\n" + \
+    "|Value|"  + str(self.value) + "|\n\n" + \
+    "## Pre-Processing\n\n#### **Combine & Make New Endpoints**\n"
+
+    ############################
+    ## PRE-PROCESSING RESULTS ##
+    ############################
+
+    ## Combine & Make New Endpoints----------------------------------------------------------------------------- 
+
+    try:
+
+        # Trigger except if object does not exist
+        test_combine_endpoints = self.report_combination
+
+        out_string = out_string + "New endpoints were made using existing endpoints. See a summary below:\n\n"
+        
+        the_combined = "|New Endpoint Name|Combined Existing Endpoints|\n|---|---|\n"
+        for key in self.report_combination:
+            value_collapse = "|"
+            for val in self.report_combination[key]:
+                value_collapse = value_collapse + val + ", "
+            the_combined = the_combined + "|" + key + value_collapse[0:(len(value_collapse)-2)] + "|\n"
+        the_combined = the_combined + "\n"
+        out_string = out_string + the_combined + "#### **Set Invalid Wells to NA**\n\n"
+
+    except:
+        out_string = out_string + "This step was not conducted.\n\n#### **Set Invalid Wells to NA**\n\n"
+
+    # Set Invalid Wells to NA-----------------------------------------------------------------------------------
+        
+    try:
+        
+        # Trigger except if the object does not exist
+        test_report_well_na = self.report_well_na
+
+        out_string = out_string + "In some cases, like when a sample fish dies, many affected endpoints" + \
+                     " need to be set to NA. Here, the 'Endpoint Name' column denotes the specific" + \
+                     " endpoint that sets this rule. In this example, it could be MORT for mortality." + \
+                     " Then, the endpoint value needs to be set, which in this case would be a 1 to" + \
+                     " indicate sample fish that did die. All endpoints would then be set to NA except" + \
+                     " for cases where the endpoint should not be affected, which are referred to as" + \
+                     " 'Endpoint Exceptions.'\n\n"
+        
+        endpoints = "|Endpoint Name|Endpoint Value|Endpoint Exceptions|\n|---|---|---|\n"
+
+        for el in range(len(self.report_well_na)):
+
+            embedded_list = self.report_well_na[el]
+            endpoints = endpoints + "|"
+
+            for the_endpoint in embedded_list[0]:
+                endpoints = endpoints + the_endpoint + ","
+            endpoints = endpoints[0:(len(endpoints)-1)] + "|"
+
+            for the_value in embedded_list[1]:
+                endpoints = endpoints + str(the_value) + ","
+            endpoints = endpoints[0:(len(endpoints)-1)] + "|"
+
+            if embedded_list[2] is not None:
+                for the_exception in embedded_list[2]:
+                    endpoints = endpoints + str(the_exception) + ","
+                endpoints = endpoints[0:(len(endpoints)-1)] + "|\n"
+            else:
+                endpoints = endpoints + "None|\n"
+            
+        endpoints = endpoints + "\n#### **Remove Invalid Endpoints**\n\n"
+
+        out_string = out_string + endpoints
+
+    except:
+        out_string = out_string + "This step was not conducted.\n\n#### **Remove Invalid Endpoints**\n\n"
+
+    file = open(out_path, "w")
+    file.write(out_string)
+    file.close()

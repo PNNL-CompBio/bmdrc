@@ -74,8 +74,8 @@ class DataClass(object):
         benchmark_dose(self, path)
 
     @abstractmethod
-    def render_report(self, outpath, title = "Benchmark Dose Response Curves", curve_plots = False):
-        report(self, outpath, title, curve_plots)
+    def report(self, out_path):
+        report(self, out_path)
 
 
 
