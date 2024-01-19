@@ -117,17 +117,17 @@ def report(self, out_path):
             endpoints = endpoints + "|"
 
             for the_endpoint in embedded_list[0]:
-                endpoints = endpoints + the_endpoint + ","
-            endpoints = endpoints[0:(len(endpoints)-1)] + "|"
+                endpoints = endpoints + the_endpoint + ", "
+            endpoints = endpoints[0:(len(endpoints)-2)] + "|"
 
             for the_value in embedded_list[1]:
-                endpoints = endpoints + str(the_value) + ","
-            endpoints = endpoints[0:(len(endpoints)-1)] + "|"
+                endpoints = endpoints + str(the_value) + ", "
+            endpoints = endpoints[0:(len(endpoints)-2)] + "|"
 
             if embedded_list[2] is not None:
                 for the_exception in embedded_list[2]:
-                    endpoints = endpoints + str(the_exception) + ","
-                endpoints = endpoints[0:(len(endpoints)-1)] + "|\n"
+                    endpoints = endpoints + str(the_exception) + ", "
+                endpoints = endpoints[0:(len(endpoints)-2)] + "|\n"
             else:
                 endpoints = endpoints + "None|\n"
             
@@ -137,6 +137,52 @@ def report(self, out_path):
 
     except:
         out_string = out_string + "This step was not conducted.\n\n#### **Remove Invalid Endpoints**\n\n"
+
+    # Remove Invalid Endpoints---------------------------------------------------------------------------------
+        
+    try:
+
+        # Trigger except if the object does not exist
+        test_report_endpoint_removal = self.report_endpoint_removal
+
+        the_removed = ""
+        for removed in self.report_endpoint_removal:
+            the_removed = the_removed + removed + ", "
+        the_removed = the_removed[0:(len(the_removed)-2)]
+
+        out_string = out_string + "The following endpoints were removed: " + the_removed + "\n\n"
+
+    except:
+
+        out_string = out_string + "This step was not conducted.\n\n"
+
+    out_string = out_string + "## Filtering\n\n#### **Negative Control Filter**\n\n"
+
+    #######################
+    ## FILTERING RESULTS ##
+    #######################
+
+    # Negative Control Filter------------------------------------------------------------------------------------
+
+    try:
+
+        # Trigger except if object does not exist
+        test_fnc = self.filter_negative_control_df
+
+        out_string = out_string + "Unusually high responses in negative control samples were filtered." +\
+                     " The response threshold was set to **" + str(self.filter_negative_control_percentage)  + "**. See a summary below:\n\n"
+        
+        fnc_table = "|Response|Count|Filter|\n|---|---|---|\n"
+
+        for el in range(len(self.filter_negative_control_df)):
+            row = self.filter_negative_control_df.loc[el]
+            fnc_table = fnc_table + "|" + str(np.round(row["Response"], 4)) + "|" + \
+                        str(row["Count"]) + "|" + row["Filter"] + "|\n"
+
+        out_string = out_string + fnc_table + "\n#### **Minimum Concentration Filter**\n\n"
+
+    except:
+        out_string = out_string + "This step was not conducted.\n\n#### **Minimum Concentration Filter**\n\n"
 
     file = open(out_path, "w")
     file.write(out_string)

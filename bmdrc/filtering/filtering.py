@@ -151,6 +151,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
 
     # Always make the backend data frame 
     self.filter_negative_control_df = NegControlRes
+    self.filter_negative_control_percentage = percentage
 
     #######################
     ## RETURN DIAGNOSTIC ##
