@@ -49,13 +49,16 @@ def benchmark_dose(self, path):
     
     self.output_res_benchmark_dose = BMDS_Final
 
-def report(self, out_path):
+def report_binary(self, out_folder, report_name, max_curve_plots):
+
+    if os.path.isdir(out_folder) == False:
+        os.mkdir(out_folder)
 
     #####################################
     ## PULL INPUT DATA CHARACTERISTICS ##
     #####################################
 
-    out_string = "# Benchmark Dose Curves\n\n" + \
+    out_string = "# " + str(report_name) + "\n\n" + \
     "## Input Data\n\n" + \
     "A **binary class** object was created using data in **" + str(self.format) + "** format." + \
     " The following column names were set:\n\n" + \
@@ -172,6 +175,7 @@ def report(self, out_path):
         out_string = out_string + "Unusually high responses in negative control samples were filtered." +\
                      " The response threshold was set to **" + str(self.filter_negative_control_percentage)  + "**. See a summary below:\n\n"
         
+        # Make table
         fnc_table = "|Response|Count|Filter|\n|---|---|---|\n"
 
         for el in range(len(self.filter_negative_control_df)):
@@ -179,11 +183,15 @@ def report(self, out_path):
             fnc_table = fnc_table + "|" + str(np.round(row["Response"], 4)) + "|" + \
                         str(row["Count"]) + "|" + row["Filter"] + "|\n"
 
-        out_string = out_string + fnc_table + "\n#### **Minimum Concentration Filter**\n\n"
+        # Save plot
+        self.filter_negative_control_plot.savefig(out_folder + "/" + "filter_negative_control.png")
+
+        out_string = out_string + fnc_table + "\nAnd here is the plot:\n![Filter Negative Control](./filter_negative_control.png)\n"
+        out_string = out_string +  "\n#### **Minimum Concentration Filter**\n\n"
 
     except:
         out_string = out_string + "This step was not conducted.\n\n#### **Minimum Concentration Filter**\n\n"
 
-    file = open(out_path, "w")
+    file = open(out_folder + "/" + report_name + ".md", "w")
     file.write(out_string)
     file.close()
