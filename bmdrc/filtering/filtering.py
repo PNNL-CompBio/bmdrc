@@ -2,8 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-import ipdb
-
 __author__ = "David Degnan"
 
 def make_plate_groups(self):
@@ -152,14 +150,15 @@ def negative_control(self, percentage, apply, diagnostic_plot):
     # Always make the backend data frame 
     self.filter_negative_control_df = NegControlRes
     self.filter_negative_control_percentage = percentage
+    self.filter_negative_control_plot = negative_control_plot(NegControlRes)
 
     #######################
     ## RETURN DIAGNOSTIC ##
     #######################
-    
+
     if apply == False:
-        if diagnostic_plot == True:
-            self.filter_negative_control_plot = negative_control_plot(NegControlRes)
+        if diagnostic_plot == False:
+            plt.close(self.filter_negative_control_plot)
     
     #############################
     ## OTHERWISE, APPLY FILTER ##
@@ -185,6 +184,9 @@ def min_concentration_plot(min_concentration_df):
     color_choices = min_concentration_df["Filter"].apply(lambda x: colors[x])
     labels = list(colors.keys())
     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+
+    # Turn off auto-display of plots
+    plt.ioff()
 
     plt.bar(x = [x for x in range(len(min_concentration_df))], height = min_concentration_df["Count"], 
             edgecolor = "black", tick_label = min_concentration_df["NumConc"],
@@ -240,10 +242,10 @@ def min_concentration(self, count, apply, diagnostic_plot):
     ###############################
 
     # Get a count per concentration group
-    ConcCount = self.plate_groups.loc[self.plate_groups["bmdrc.filter"] == "Keep", ["bmdrc.Endpoint.ID", self.concentration]].groupby("bmdrc.Endpoint.ID").nunique().reset_index().rename(columns = {self.concentration:"Count"}).sort_values(by = "Count")
+    ConcCount = self.plate_groups.loc[self.plate_groups["bmdrc.filter"] == "Keep", ["bmdrc.Endpoint.ID", self.concentration]].groupby("bmdrc.Endpoint.ID").nunique().reset_index().rename(columns = {self.concentration:"NumConc"})
 
     # Get summary counts of counts
-    ConcCountSum = ConcCount["Count"].value_counts().reset_index().rename(columns = {"count":"NumConc"}).sort_values(["NumConc"])
+    ConcCountSum = ConcCount["NumConc"].value_counts().reset_index().rename(columns = {"count":"Count"}).sort_values(["NumConc"])
 
     # Keep all by default
     ConcCountSum["Filter"] = "Keep"
@@ -252,15 +254,17 @@ def min_concentration(self, count, apply, diagnostic_plot):
     ConcCountSum.loc[ConcCountSum["NumConc"] < count, "Filter"] = "Filter"
 
     # Add summary filter to object
-    self.filter_min_concentration_df = ConcCountSum
+    self.filter_min_concentration_df = ConcCountSum.sort_values("NumConc", ascending = False).reset_index(drop = True)
+    self.filter_min_concentration_count = count
+    self.filter_min_concentration_plot = min_concentration_plot(ConcCountSum)
 
     #######################
     ## RETURN DIAGNOSTIC ##
     #######################
-    
+
     if apply == False:
-        if diagnostic_plot == True:
-            self.filter_min_concentration_plot = min_concentration_plot(ConcCountSum)
+        if diagnostic_plot == False:
+            plt.close(self.filter_min_concentration_plot)
 
     #############################
     ## OTHERWISE, APPLY FILTER ##
@@ -269,7 +273,7 @@ def min_concentration(self, count, apply, diagnostic_plot):
     else:
         
         # Get list of endpoints to remove
-        EndpointRemoval = ConcCount.loc[ConcCount["Count"] < 8, "bmdrc.Endpoint.ID"].tolist()
+        EndpointRemoval = ConcCount.loc[ConcCount["NumConc"] < count, "bmdrc.Endpoint.ID"].tolist()
 
         self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(EndpointRemoval), "bmdrc.filter"] = "Remove"
         self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(EndpointRemoval), "bmdrc.filter.reason"] = \
@@ -290,6 +294,9 @@ def correlation_score_plot(correlation_score, threshold):
     # Get counts a bin sizes
     k_counts, k_bins = np.histogram(correlation_score.loc[correlation_score["Filter"] == "Keep", "Spearman"], bins = the_bins)
     r_counts, r_bins = np.histogram(correlation_score.loc[correlation_score["Filter"] == "Remove", "Spearman"], bins = the_bins)
+
+    # Turn off auto-display of plots
+    plt.ioff()
 
     # Make plot
     plt.hist(k_bins[:-1], k_bins, weights = k_counts, color = "steelblue", label = "Keep", ec = "k")
@@ -384,14 +391,15 @@ def correlation_score(self, score, apply, diagnostic_plot):
 
     # Add correlation summary object to object
     self.filter_correlation_score_df = CorScore
+    self.filter_correlation_score_plot = correlation_score_plot(CorScore, score)
 
     #######################
     ## RETURN DIAGNOSTIC ##
     #######################
     
     if apply == False:
-        if diagnostic_plot == True:
-            self.filter_correlation_score_plot = correlation_score_plot(CorScore, score)
+        if diagnostic_plot == False:
+            plt.close(self.filter_correlation_score_plot)
 
     #############################
     ## OTHERWISE, APPLY FILTER ##

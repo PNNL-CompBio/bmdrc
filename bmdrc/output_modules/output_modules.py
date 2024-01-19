@@ -80,9 +80,6 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
 
     try:
 
-        # Trigger except if object does not exist
-        test_combine_endpoints = self.report_combination
-
         out_string = out_string + "New endpoints were made using existing endpoints. See a summary below:\n\n"
         
         the_combined = "|New Endpoint Name|Combined Existing Endpoints|\n|---|---|\n"
@@ -100,9 +97,6 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
     # Set Invalid Wells to NA-----------------------------------------------------------------------------------
         
     try:
-        
-        # Trigger except if the object does not exist
-        test_report_well_na = self.report_well_na
 
         out_string = out_string + "In some cases, like when a sample fish dies, many affected endpoints" + \
                      " need to be set to NA. Here, the 'Endpoint Name' column denotes the specific" + \
@@ -145,9 +139,6 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
         
     try:
 
-        # Trigger except if the object does not exist
-        test_report_endpoint_removal = self.report_endpoint_removal
-
         the_removed = ""
         for removed in self.report_endpoint_removal:
             the_removed = the_removed + removed + ", "
@@ -169,10 +160,7 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
 
     try:
 
-        # Trigger except if object does not exist
-        test_fnc = self.filter_negative_control_df
-
-        out_string = out_string + "Unusually high responses in negative control samples were filtered." +\
+        out_string = out_string + "Plates with unusually high responses in negative control samples were filtered." +\
                      " The response threshold was set to **" + str(self.filter_negative_control_percentage)  + "**. See a summary below:\n\n"
         
         # Make table
@@ -191,6 +179,31 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
 
     except:
         out_string = out_string + "This step was not conducted.\n\n#### **Minimum Concentration Filter**\n\n"
+
+    # Minimum Concentration Filter--------------------------------------------------------------------------------
+        
+    try:
+
+        out_string = out_string + "Endpoints with too few concentration measurements (non-NA) to model are removed." +\
+                     " The minimum was set to **" + str(self.filter_min_concentration_count)  + "**. See a summary below:\n\n"
+        
+        # Make table
+        mc_table = "|Number Concentrations|Count|Filter|\n|---|---|---|\n"
+
+        for el in range(len(self.filter_min_concentration_df)):
+            row = self.filter_min_concentration_df.loc[el]
+            mc_table = mc_table + "|" + str(row["NumConc"]) + "|" + \
+                        str(row["Count"]) + "|" + row["Filter"] + "|\n"
+
+        # Save plot
+        self.filter_min_concentration_plot.savefig(out_folder + "/" + "filter_minimum_concentration.png")
+
+        out_string = out_string + mc_table + "\nAnd here is the plot:\n![Filter Minimum Concentration](./filter_minimum_concentration.png)\n"
+        out_string = out_string +  "\n#### **Correlation Score Filter**\n\n"
+
+    except:
+
+        out_string = out_string + "This step was not conducted.\n\n#### **Correlation Score Filter**\n\n"
 
     file = open(out_folder + "/" + report_name + ".md", "w")
     file.write(out_string)
