@@ -161,7 +161,7 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
     try:
 
         out_string = out_string + "Plates with unusually high responses in negative control samples were filtered." +\
-                     " The response threshold was set to **" + str(self.filter_negative_control_percentage)  + "**. See a summary below:\n\n"
+                     " The response threshold was set to **" + str(self.filter_negative_control_thresh)  + "**. See a summary below:\n\n"
         
         # Make table
         fnc_table = "|Response|Count|Filter|\n|---|---|---|\n"
@@ -185,7 +185,7 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
     try:
 
         out_string = out_string + "Endpoints with too few concentration measurements (non-NA) to model are removed." +\
-                     " The minimum was set to **" + str(self.filter_min_concentration_count)  + "**. See a summary below:\n\n"
+                     " The minimum was set to **" + str(self.filter_min_concentration_thresh)  + "**. See a summary below:\n\n"
         
         # Make table
         mc_table = "|Number Concentrations|Count|Filter|\n|---|---|---|\n"
@@ -204,6 +204,42 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
     except:
 
         out_string = out_string + "This step was not conducted.\n\n#### **Correlation Score Filter**\n\n"
+
+    # Correlation Score Filter----------------------------------------------------------------------------------
+        
+    try:
+
+        out_string = out_string + "Endpoints with little to no positive correlation with dose are unexpected" +\
+                     " and should be removed. The correlation threshold was set to **" + str(self.filter_correlation_score_thresh)  + "**. See a summary below:\n\n"
+        
+        # Correlation Score Summary Table
+        the_bins = [x/100 for x in range(-100, 105, 20)]
+        correlation_score = self.filter_correlation_score_df
+        counts, bins = np.histogram(correlation_score["Spearman"], bins = the_bins)
+        cor_score_summary = pd.DataFrame([bins, counts]).transpose().rename({0:"CorrelationScoreBin", 1:"Count"}, axis = 1).loc[0:9]
+
+        # Make table
+        cs_table = "|Correlation Score Bin|Count|\n|---|---|\n"
+
+        for el in range(len(cor_score_summary)):
+            row = cor_score_summary.loc[el]
+            cs_table = cs_table + "|" + str(row["CorrelationScoreBin"]) + "|" + \
+                       str(row["Count"]) + "|\n"
+
+        # Save plot
+        self.filter_correlation_score_plot.savefig(out_folder + "/" + "filter_correlation_score.png")
+
+        out_string = out_string + cs_table + "\nAnd here is the plot:\n![Filter Correlation Score](./filter_correlation_score.png)\n\n#### **Filter Summary*\n\n"
+
+    except:
+
+        out_string = out_string + "This step was not conducted.\n\nn#### **Filter Summary*\n\n"
+
+    # Filter Summary-------------------------------------------------------------------------------------
+        
+    ###################
+    ## MODEL FITTING ##
+    ###################
 
     file = open(out_folder + "/" + report_name + ".md", "w")
     file.write(out_string)

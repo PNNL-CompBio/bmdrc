@@ -149,7 +149,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
 
     # Always make the backend data frame 
     self.filter_negative_control_df = NegControlRes
-    self.filter_negative_control_percentage = percentage
+    self.filter_negative_control_thresh = percentage
     self.filter_negative_control_plot = negative_control_plot(NegControlRes)
 
     #######################
@@ -255,7 +255,7 @@ def min_concentration(self, count, apply, diagnostic_plot):
 
     # Add summary filter to object
     self.filter_min_concentration_df = ConcCountSum.sort_values("NumConc", ascending = False).reset_index(drop = True)
-    self.filter_min_concentration_count = count
+    self.filter_min_concentration_thresh = count
     self.filter_min_concentration_plot = min_concentration_plot(ConcCountSum)
 
     #######################
@@ -391,6 +391,7 @@ def correlation_score(self, score, apply, diagnostic_plot):
 
     # Add correlation summary object to object
     self.filter_correlation_score_df = CorScore
+    self.filter_correlation_score_thresh = score
     self.filter_correlation_score_plot = correlation_score_plot(CorScore, score)
 
     #######################
