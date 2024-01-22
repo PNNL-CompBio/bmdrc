@@ -80,7 +80,9 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
 
     try:
 
-        out_string = out_string + "New endpoints were made using existing endpoints. See a summary below:\n\n"
+        out_string = out_string + "New endpoints were made using existing endpoints using 'or', which means that" + \
+        " if there is any endpoints with a '1', this new endpoint will also have a '1', regardless of" + \
+       " how many zeroes there are in the other endpoints. See a summary table of added endpoints below:\n\n"
         
         the_combined = "|New Endpoint Name|Combined Existing Endpoints|\n|---|---|\n"
         for key in self.report_combination:
@@ -164,7 +166,7 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
                      " The response threshold was set to **" + str(self.filter_negative_control_thresh)  + "**. See a summary below:\n\n"
         
         # Make table
-        fnc_table = "|Response|Count|Filter|\n|---|---|---|\n"
+        fnc_table = "|Response|Number of Plates|Filter|\n|---|---|---|\n"
 
         for el in range(len(self.filter_negative_control_df)):
             row = self.filter_negative_control_df.loc[el]
@@ -188,7 +190,7 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
                      " The minimum was set to **" + str(self.filter_min_concentration_thresh)  + "**. See a summary below:\n\n"
         
         # Make table
-        mc_table = "|Number Concentrations|Count|Filter|\n|---|---|---|\n"
+        mc_table = "|Number of Concentrations|Number of Endpoints|Filter|\n|---|---|---|\n"
 
         for el in range(len(self.filter_min_concentration_df)):
             row = self.filter_min_concentration_df.loc[el]
@@ -219,23 +221,33 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
         cor_score_summary = pd.DataFrame([bins, counts]).transpose().rename({0:"CorrelationScoreBin", 1:"Count"}, axis = 1).loc[0:9]
 
         # Make table
-        cs_table = "|Correlation Score Bin|Count|\n|---|---|\n"
+        cs_table = "|Correlation Score Bin|Number of Endpoints|\n|---|---|\n"
 
         for el in range(len(cor_score_summary)):
             row = cor_score_summary.loc[el]
             cs_table = cs_table + "|" + str(row["CorrelationScoreBin"]) + "|" + \
-                       str(row["Count"]) + "|\n"
+                       str(np.round(row["Count"], 0)) + "|\n"
 
         # Save plot
         self.filter_correlation_score_plot.savefig(out_folder + "/" + "filter_correlation_score.png")
 
-        out_string = out_string + cs_table + "\nAnd here is the plot:\n![Filter Correlation Score](./filter_correlation_score.png)\n\n#### **Filter Summary*\n\n"
+        out_string = out_string + cs_table + "\nAnd here is the plot:\n![Filter Correlation Score](./filter_correlation_score.png)\n\n#### **Filter Summary**\n\n"
 
     except:
 
-        out_string = out_string + "This step was not conducted.\n\nn#### **Filter Summary*\n\n"
+        out_string = out_string + "This step was not conducted.\n\nn#### **Filter Summary**\n\n"
 
     # Filter Summary-------------------------------------------------------------------------------------
+        
+    # Get removal and kept counts 
+    removed = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"]["bmdrc.Endpoint.ID"]))
+    kept = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]["bmdrc.Endpoint.ID"]))       
+    total = removed + kept
+
+    out_string = out_string + "Overall, " + str(total) + " endpoint and chemical combinations were considered. " + str(kept) + \
+                 " were deemed eligible for modeling, and " + str(removed) + " were not. Below is a summary of how many endpoints" + \
+                " were affected by the filter selections. Note that endpoints can be affected by multiple filters, and that" + \
+                " the negative control filter is applied to plates."
         
     ###################
     ## MODEL FITTING ##
