@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+import ipdb
+
 __author__ = "David Degnan"
 
 def make_plate_groups(self):
@@ -165,14 +167,15 @@ def negative_control(self, percentage, apply, diagnostic_plot):
     #############################
 
     else:
-        
-        
 
+        # Get plate IDs
+        NegControls["Response"] = NegControls["bmdrc.num.affected"] / NegControls["bmdrc.num.nonna"]        
+        Plates = NegControls[NegControls["Response"] > percentage/100]["bmdrc.Plate.ID"].tolist()
 
         # Apply filter
-        self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100 , "bmdrc.filter"] = "Filter"
-        self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100, "bmdrc.filter.reason"] =  \
-            self.plate_groups.loc[(self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]) > percentage/100, "bmdrc.filter.reason"] + " negative_control_filter"
+        self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter"] = "Filter"
+        self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter.reason"] =  \
+            self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter.reason"] + " negative_control_filter"
 
 
 def min_concentration_plot(min_concentration_df):
