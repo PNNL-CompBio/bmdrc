@@ -107,18 +107,18 @@
 1,24,C,4,DP24,1,
 1,24,C,5,DP24,1,
 1,24,C,6,DP24,1,
-1,0,A,1,DP24,0,Not Enough Concentrations
-1,0,A,2,DP24,0,Not Enough Concentrations
-1,0,A,3,DP24,0,Not Enough Concentrations
-1,0,A,4,DP24,0,Not Enough Concentrations
-1,0,A,5,DP24,0,Not Enough Concentrations
-1,0,A,6,DP24,0,Not Enough Concentrations
-1,0,B,1,DP24,0,Not Enough Concentrations
-1,0,B,2,DP24,0,Not Enough Concentrations
-1,0,B,3,DP24,0,Not Enough Concentrations
-1,0,B,4,DP24,0,Not Enough Concentrations
-1,0,B,5,DP24,0,Not Enough Concentrations
-1,0,B,6,DP24,1,Not Enough Concentrations
+1,0,A,1,NC24,0,Not Enough Concentrations
+1,0,A,2,NC24,0,Not Enough Concentrations
+1,0,A,3,NC24,0,Not Enough Concentrations
+1,0,A,4,NC24,0,Not Enough Concentrations
+1,0,A,5,NC24,0,Not Enough Concentrations
+1,0,A,6,NC24,0,Not Enough Concentrations
+1,0,B,1,NC24,0,Not Enough Concentrations
+1,0,B,2,NC24,0,Not Enough Concentrations
+1,0,B,3,NC24,0,Not Enough Concentrations
+1,0,B,4,NC24,0,Not Enough Concentrations
+1,0,B,5,NC24,0,Not Enough Concentrations
+1,0,B,6,NC24,1,Not Enough Concentrations
 1,0,C,1,NC24,0,Not Enough Concentrations
 1,0,C,2,NC24,0,Not Enough Concentrations
 1,0,C,3,NC24,0,Not Enough Concentrations
