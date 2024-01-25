@@ -13,20 +13,20 @@ def make_plate_groups(self):
     This step should be completed after all pre-processing steps are finished. 
     '''
 
-    # If there is a bmdrc well id, drop it
-    if "bmdrc.Well.ID" in self.df.columns.tolist():
-        self.plate_groups = self.df.drop([self.well, "bmdrc.Well.ID"], axis = 1).groupby(by = [self.chemical, self.concentration, self.plate, self.endpoint], as_index = False)
-    else:
-        self.plate_groups = self.df.drop([self.well], axis = 1).groupby(by = [self.chemical, self.concentration, self.plate, self.endpoint], as_index = False)
+    # Keep just the required columns 
+    pre_plate_groups = self.df[[self.chemical, self.concentration, self.plate, self.endpoint, self.value]]
+
+    # Make a grouped data frame
+    grouped_plate_groups = pre_plate_groups.groupby(by = [self.chemical, self.concentration, self.plate, self.endpoint], as_index = False)
         
     # Get the number of samples per group
-    num_tot_samples = self.plate_groups.size().rename(columns = {"size": "bmdrc.num.tot"})
+    num_tot_samples = grouped_plate_groups.size().rename(columns = {"size": "bmdrc.num.tot"})
 
     # Get the number of non-na samples per groups
-    num_nonna = self.plate_groups.count().rename(columns = {"value": "bmdrc.num.nonna"})
+    num_nonna = grouped_plate_groups.count().rename(columns = {"value": "bmdrc.num.nonna"})
 
     # Get the number affected
-    num_affected = self.plate_groups.sum().rename(columns = {"value": "bmdrc.num.affected"})
+    num_affected = grouped_plate_groups.sum().rename(columns = {"value": "bmdrc.num.affected"})
 
     # Merge to create missingness dataframe
     self.plate_groups = pd.merge(pd.merge(num_tot_samples, num_nonna), num_affected)
@@ -372,7 +372,7 @@ def correlation_score(self, score, apply, diagnostic_plot):
     CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", "bmdrc.num.nonna", "bmdrc.num.affected"]]
 
     # Sum up counts
-    CorScore = CorScore.groupby(["conc", "bmdrc.Endpoint.ID"]).sum().reset_index()
+    CorScore = CorScore.groupby([self.concentration, "bmdrc.Endpoint.ID"]).sum().reset_index()
 
     # Calculate response
     CorScore["Response"] = CorScore["bmdrc.num.affected"] / CorScore["bmdrc.num.nonna"]
@@ -381,7 +381,7 @@ def correlation_score(self, score, apply, diagnostic_plot):
     CorScore.sort_values(by = ["bmdrc.Endpoint.ID", self.concentration])
 
     # Calculate spearman correlations
-    CorScore = CorScore[["conc", "bmdrc.Endpoint.ID", "Response"]].groupby(["bmdrc.Endpoint.ID"]).corr(method = "spearman").unstack().iloc[:,1].reset_index()
+    CorScore = CorScore[[self.concentration, "bmdrc.Endpoint.ID", "Response"]].groupby(["bmdrc.Endpoint.ID"]).corr(method = "spearman").unstack().iloc[:,1].reset_index()
 
     # Fix index issues 
     CorScore = CorScore.set_axis(["bmdrc.Endpoint.ID", "Spearman"], axis = 1)
