@@ -231,7 +231,7 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
         # Save plot
         self.filter_correlation_score_plot.savefig(out_folder + "/" + "filter_correlation_score.png")
 
-        out_string = out_string + cs_table + "\nAnd here is the plot:\n![Filter Correlation Score](./filter_correlation_score.png)\n\n## Model Fitting\n\n#### **Filter Summary**\n\n"
+        out_string = out_string + cs_table + "\nAnd here is the plot:\n![Filter Correlation Score](./filter_correlation_score.png)\n\n## Model Fitting & Output Modules\n\n#### **Filter Summary**\n\n"
 
     except:
 
@@ -258,13 +258,12 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
                  "|---|---|---|\n|Goodness of Fit Threshold|" + str(self.model_fitting_gof_threshold) + "|Minimum p-value for fitting a model. Default is 0.1|\n" + \
                  "|Akaike Information Criterion (AIC) Threshold|" + str(self.model_fitting_aic_threshold) + "|Any models with an AIC within this value are considered" + \
                  " an equitable fit. Default is 2.\n" + \
-                 "|Model Selection|" + self.model_fitting_model_selection + "|Either return one model with the lowest BMDL, or combine equivalent fits|\n\n**Model Quality Summary**\n\n"
+                 "|Model Selection|" + self.model_fitting_model_selection + "|Either return one model with the lowest BMDL, or combine equivalent fits|\n\n#### **Model Quality Summary**\n\n"
     
     # Model Quality Summary---------------------------------------------------------------------------------
 
     out_string = out_string + "Below is a summary table of the number of endpoints with a high quality fit (a flag of 1, meaning that" + \
-                 " the BMD10 value is within the range of measured doses) and those that are not high quality (a flag of 0). Beneath the" + \
-                 " flag summary table, there is also a general list of useful methods for extracting outputs from bmdrc.\n\n"
+                 " the BMD10 value is within the range of measured doses) and those that are not high quality (a flag of 0).\n\n"
 
     # Make dataframe of flag counts, adding any missing flags
     dataqc_table = self.bmds[["Model", "DataQC_Flag"]].groupby("DataQC_Flag").count().reset_index().rename({"Model":"Count"}, axis = 1)
@@ -275,12 +274,16 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
 
     # Add flag counts 
     out_string = out_string + "|Flag|Count|\n|---|---|\n|0|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 0]["Count"].values[0]) + "|\n" + \
-                "|1|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 1]["Count"].values[0]) + "|\n\n"
+                "|1|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 1]["Count"].values[0]) + "|\n\n#### **Output Modules**\n\nBelow, see a table of" + \
+                " useful methods for extracting outputs from bmdrc.\n\n"
     
     # Add useful parameters 
     out_string = out_string + "|Method|Description|\n|---|---|\n|.bmds|Table of fitted benchmark dose values|\n" + \
-                 "|.bmds_filtered|Table of filtered models not eligible for benchmark dose calculations|\n"
-
+                 "|.bmds_filtered|Table of filtered models not eligible for benchmark dose calculations|\n" + \
+                 "|.output_res_benchmark_dose|Table of benchmark doses for all models, regardless of whether they were filtered or not|\n" + \
+                 "|.p_value_df|Table of goodness of fit p-values for every eligible endpoint|\n" + \
+                 "|.aic_df|Table of Akaike Information Criterion values for every eligible endpoint|\n" + \
+                 "|.response_curve|Plot a benchmark dose curve for an endpoint|\n\n"
 
     file = open(out_folder + "/" + report_name + ".md", "w")
     file.write(out_string)
