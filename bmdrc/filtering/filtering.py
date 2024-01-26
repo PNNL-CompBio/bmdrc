@@ -147,7 +147,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
     NegControlRes["Filter"] = "Keep"
 
     # Determine what values will be removed
-    NegControlRes.loc[NegControlRes["Response"] > percentage, "Filter"] = "Filter"
+    NegControlRes.loc[NegControlRes["Response"] >= percentage, "Filter"] = "Filter"
 
     # Always make the backend data frame 
     self.filter_negative_control_df = NegControlRes
@@ -170,7 +170,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
 
         # Get plate IDs
         NegControls["Response"] = NegControls["bmdrc.num.affected"] / NegControls["bmdrc.num.nonna"]        
-        Plates = NegControls[NegControls["Response"] > percentage/100]["bmdrc.Plate.ID"].tolist()
+        Plates = NegControls[NegControls["Response"] >= (percentage/100)]["bmdrc.Plate.ID"].tolist()
 
         # Apply filter
         self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter"] = "Filter"

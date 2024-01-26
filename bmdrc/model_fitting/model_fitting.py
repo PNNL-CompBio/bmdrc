@@ -605,10 +605,10 @@ def removed_endpoints_stats(self):
         low_quality = low_quality.groupby("bmdrc.Endpoint.ID")
 
         # Calculate values 
-        bmds_filtered = low_quality.apply(lambda df: np.trapz(df["frac.affected"], x = df["conc"])).reset_index().rename(columns = {0: "AUC"})
+        bmds_filtered = low_quality.apply(lambda df: np.trapz(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
-        bmds_filtered["Min_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", "conc"]].min("conc").reset_index()["conc"], 4)
-        bmds_filtered["Max_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", "conc"]].max("conc").reset_index()["conc"], 4)
+        bmds_filtered["Min_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].min(self.concentration).reset_index()[self.concentration], 4)
+        bmds_filtered["Max_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].max(self.concentration).reset_index()[self.concentration], 4)
         bmds_filtered["AUC_Norm"] = bmds_filtered["AUC"] / (bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"])
 
         # Order columns
@@ -625,6 +625,11 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
     This function fits all non-filtered endpoints to the EPA recommended 
     models.
     '''
+
+    # Save parameters 
+    self.model_fitting_gof_threshold = gof_threshold
+    self.model_fitting_aic_threshold = aic_threshold
+    self.model_fitting_model_selection = model_selection
 
     # Add fraction affected to plate groups 
     self.plate_groups["bmdrc.frac.affected"] = self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]
@@ -976,9 +981,9 @@ def calc_fit_statistics(self):
         Data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == id]
 
         # Get the AUC, min, and max dose 
-        AUC = np.trapz(Data["bmdrc.frac.affected"], x = Data["conc"])
-        Min_Dose = round(min(Data["conc"]), 4)
-        Max_Dose = round(max(Data["conc"]), 4)
+        AUC = np.trapz(Data["bmdrc.frac.affected"], x = Data[self.concentration])
+        Min_Dose = round(min(Data[self.concentration]), 4)
+        Max_Dose = round(max(Data[self.concentration]), 4)
 
         # Return results in a dictionary
         rowDict = {
@@ -1215,14 +1220,14 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
         fig = plt.figure(figsize = (10, 5))
 
         # Add points 
-        plt.scatter(to_model["conc"], to_model["bmdrc.frac.affected"], color = "black")
+        plt.scatter(to_model[self.concentration], to_model["bmdrc.frac.affected"], color = "black")
 
         # Add curve
         plt.plot(curve["Dose in uM"], curve["Response"], color = "black")
 
         # Add confidence intervals
         for row in range(len(to_model)):
-            plt.plot([to_model["conc"][row], to_model["conc"][row]], [to_model["Low"][row], to_model["High"][row]], color = "black")
+            plt.plot([to_model[self.concentration][row], to_model[self.concentration][row]], [to_model["Low"][row], to_model["High"][row]], color = "black")
 
         # Add labels and make plot
         plt.xlabel("Dose in uM")
