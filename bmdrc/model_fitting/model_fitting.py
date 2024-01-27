@@ -181,6 +181,7 @@ class Weibull(GenericLikelihoodModel):
         return -log_lhood
 
     def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+
         if start_params is None:
             g_0 = 0.1
 
@@ -661,6 +662,12 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
         # Subset to endpoint
         sub_data = dose_response[dose_response["bmdrc.Endpoint.ID"] == endpoint]
 
+        # Only keep required columns, and sum counts across plates
+        sub_data = sub_data[[self.concentration, "bmdrc.num.tot", "bmdrc.num.affected", "bmdrc.num.nonna"]].groupby(self.concentration).sum().reset_index()
+
+        # Calculate fraction affected
+        sub_data["bmdrc.frac.affected"] = sub_data["bmdrc.num.affected"] / sub_data["bmdrc.num.nonna"]
+
         # Calculate P-Value Function
         def calc_p_value(PredictedValues, Params):
             '''Return a p-value of model fit for each unique ID and Model dataframe pairing'''
@@ -701,8 +708,19 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
             # Get the AIC
             AIC = -2*model.fit().llf + (2 * len(model_params))
 
+            # Get the BMD10
+            BMD10 = Calculate_BMD(Model = modelname, params = model_params)
+
+            # Get the BMDL
+            BMDL = Calculate_BMDL(self.concentration,    
+                                  Model = modelname,          
+                                  FittedModelObj = model,   
+                                  Data = sub_data, 
+                                  BMD10 = BMD10, 
+                                  params = model_params)
+
             # Return a list
-            return([model, model_params, model_fittedvals, model_pval, AIC, modelname])
+            return([model, model_params, model_fittedvals, model_pval, AIC, modelname, BMD10, BMDL])
 
         # Run regression models in a dictionary
         models = {
@@ -743,65 +761,49 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
         for key in models.keys():
             aics[key] = models[key][4]
 
-        ## Determine the best model
-        model_names = ["Logistic", "Gamma", "Weibull", "Log Logistic", "Probit",  "Log Probit", "Multistage2", "Quantal Linear"]
-            
-        # 1. Keep models within the goodness of fit threshold
-        best_fits = [x[1] >= gof_threshold for x in p_values.items()]
-        best_fit_positions = [i for i, x in enumerate(best_fits) if x]
+        # Iterate through all BMD10s
+        bmd10s = {}
+        for key in models.keys():
+            bmd10s[key] = models[key][6]   
 
-        # Fit no models if all the goodness of fits are below are 0.1, otherwise proceed
-        if (len(best_fit_positions) == 0):
-            if hasattr(self, "failed_pvalue_test") == False:
-                self.failed_pvalue_test = [endpoint]
-            else:
-                self.failed_pvalue_test.append(endpoint)
+        # Iterate through all BMDLs
+        bmdls = {}
+        for key in models.keys():
+            bmdls[key] = models[key][7]   
+
+        # Define a function to stop the iteration if no potential models remain
+        def check_remaining_models(potential_models): 
+            
+            # Fit no models if none remain after each step
+            if (len(potential_models) == 0):
+                if hasattr(self, "failed_pvalue_test") == False:
+                    self.failed_pvalue_test = [endpoint]
+                else:
+                    self.failed_pvalue_test.append(endpoint)
+                return True
+
+        # Step One: Keep models within the goodness of fit threshold
+        potential_models = [key for key in p_values.keys() if np.isnan(p_values[key]) == False and p_values[key] >= gof_threshold] 
+        if (check_remaining_models(potential_models)):
             continue
 
-        # Return the only model if there's only one 
-        elif (len(best_fit_positions) == 1):
-            BestModel = model_names[best_fit_positions[0]]
-            model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
+        # Step Two: Keep models within the AIC threshold. First, toss all aics that are np.nan, union with potential models, and then proceed.
+        aics2 = [key for key in aics.keys() if np.isnan(aics[key]) == False]
+        aics2 = [x for x in aics2 if x in potential_models]
+        aics2_data = [aics[x] for x in aics2]
+        aics2_pos = [x for x in range(len(aics2)) if np.abs(aics2_data[x] - min(aics2_data)) < aic_threshold]
+        potential_models = [aics2[x] for x in aics2_pos]
 
-        # If there is more than one model, find equivalents with AIC. The go the 
-        # "lowest BMDL" or "combined" route.
-        else: 
-
-            # Pull and run candidate models 
-            candidate_models = [model_names[x] for x in best_fit_positions]
-            candidate_models_res = [models[x] for x in candidate_models]
-
-            # Gather AIC values. If only one is within the threshold, return value.
-            AICs = [x[4] for x in candidate_models_res]
-            AICs = np.nan_to_num(AICs)
-
-            # Debug the inf AIC values, and add a BMDLs measurement section 
-            # if endpoint == "3863 MUSC":
-            #   ipdb.set_trace()
-
-            AIC_pass = [np.abs(x - min(AICs)) < aic_threshold for x in AICs]
-
-            # Return singular model if only one true 
-            if (sum(AIC_pass) == 1):
-                BestModel = candidate_models[[x for x in np.where(AIC_pass)[0]][0]]
-                model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
-
-            else: 
-
-                # Add a combined route if desired. This will just add the combined model. 
-                if (model_selection == "combined"):
-                    raise Exception("The 'combined' option is not currently implemented.")
-
-                # Now calculate the lowest BMDL
-                BMD10s = [Calculate_BMD(Model = x[5], params = x[1]) for x in candidate_models_res]
-                BMDLs = [Calculate_BMDL(self.concentration,    
-                                        Model = candidate_models_res[x][5],          
-                                        FittedModelObj= candidate_models_res[x][0],   
-                                        Data = sub_data, 
-                                        BMD10 = BMD10s[x], 
-                                        params = candidate_models_res[x][1]) for x in range(len(candidate_models_res))]
-                BestModel = candidate_models[np.nanargmin(BMDLs)]
-                model_results[endpoint] = [p_values, models[BestModel], BestModel, aics]
+        # Step Three: Select smallest BMDL, if applicable
+        if (check_remaining_models(potential_models)):
+            continue
+        if (len(potential_models) == 1):
+            model_results[endpoint] = [p_values, models[potential_models[0]], potential_models[0], aics, bmd10s, bmdls]
+        else:
+            bmdls2 = [x for x in potential_models if np.isnan(bmdls[x]) == False]
+            bmdls2_data = [bmdls[x] for x in potential_models if np.isnan(bmdls[x]) == False]
+            selected_model = bmdls2[np.argmin(bmdls2_data)]
+            model_results[endpoint] = [p_values, models[selected_model], selected_model, aics, bmd10s, bmdls]
 
     self.model_fits = model_results
 
@@ -955,6 +957,23 @@ def calc_fit_statistics(self):
 
     # Save AIC df 
     self.aic_df = aic_df
+
+    ######################
+    ## PULL BMDLS TABLE ##
+    ######################
+
+    # Make bmdls list
+    bmdls_list = []
+    for id in model_results.keys():
+        theDict = model_results[id][5]
+        theDict["bmdrc.Endpoint.ID"] = id
+        bmdls_list.append(theDict)
+
+    # Make the bmdls data.frame 
+    bmdls_df = pd.DataFrame(bmdls_list)
+
+    # Save BMDL df
+    self.bmdls_df = bmdls_df
 
     #####################
     ## BUILD BMD TABLE ##
