@@ -2,8 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-import ipdb
-
 __author__ = "David Degnan"
 
 def make_plate_groups(self):

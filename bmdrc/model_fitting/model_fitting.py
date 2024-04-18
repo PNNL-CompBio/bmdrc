@@ -10,8 +10,6 @@ from scipy.interpolate import make_interp_spline
 import warnings
 warnings.filterwarnings('ignore')
 
-import ipdb
-
 __author__ = ["Paritosh Pande" , "David Degnan"]
 
 ############################
@@ -1207,6 +1205,9 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
             curve = pd.DataFrame([dose_x_vals, multistage_2_fun(dose_x_vals, model_params)]).T
         elif model == "quantal linear":
             curve = pd.DataFrame([dose_x_vals, quantal_linear_fun(dose_x_vals, model_params)]).T
+
+
+        ipdb.set_trace()
 
         # Rename curve columns
         curve.columns = ["Dose in uM", "Response"]
