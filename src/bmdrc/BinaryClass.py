@@ -3,14 +3,15 @@ import pandas as pd
 import numpy as np
 from abc import abstractmethod
 
-from ..preprocessing import endpoint_combine, well_to_na, remove_endpoints
-from ..filtering import make_plate_groups, negative_control, min_concentration, correlation_score
-from ..model_fitting import fit_the_models, gen_response_curve
-from ..output_modules import benchmark_dose, report_binary
+from .preprocessing import endpoint_combine, well_to_na, remove_endpoints
+from .filtering import make_plate_groups, negative_control, min_concentration, correlation_score
+from .model_fitting import fit_the_models, gen_response_curve
+from .output_modules import benchmark_dose, report_binary
 
 __author__ = "David Degnan"
 
 ## Guidance for all selections can be found here: https://www.epa.gov/sites/default/files/2015-01/documents/benchmark_dose_guidance.pdf
+## Package built following the guidance from here: https://packaging.python.org/en/latest/tutorials/packaging-projects/
 
 class DataClass(object):
     '''

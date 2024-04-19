@@ -4,10 +4,9 @@ import numpy as np
 import re
 from abc import abstractmethod
 
-from . import DataClass
-from . import BinaryClass
+from .BinaryClass import DataClass
 
-class LPR(DataClass):
+class LPRClass(DataClass):
     '''
     Generate a binary class object from light photomotor response data,
     which must be in long format. 
