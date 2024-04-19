@@ -28,14 +28,16 @@ class LPRClass(DataClass):
     time: (string) name of the column containing time, which should be
     a string or integer. Strings should contain a number. 
 
-    cycle_time (numeric): length of a cycle. Default is 30. 
-
     value: (string) name of the column containing the binary values, which should 
     be 0 for absent, and 1 for present. Not used if the light photomotor response 
+
+    cycle_time: (numeric) length of a cycle. Default is 30. 
+
+    wells_to_remove: (string) list of strings with wells to remove
     '''
 
-    # Define the input checking functions 
-    def __init__(self, df, chemical, plate, well, concentration, time, value, cycle_length = 30):
+    # Define the input checking functions. Include raw and transformed data.frames 
+    def __init__(self, df, chemical, plate, well, concentration, time, value, cycle_length = 30.0, wells_to_remove = None):
         self.df = df
         self.chemical = chemical
         self.plate = plate
@@ -44,6 +46,7 @@ class LPRClass(DataClass):
         self.time = time
         self.value = value
         self.cycle_length = cycle_length
+        self.wells_to_remove = wells_to_remove
 
     # Set property returning functions 
     df = property(operator.attrgetter('_df'))
@@ -54,6 +57,7 @@ class LPRClass(DataClass):
     time = property(operator.attrgetter('_time'))
     value = property(operator.attrgetter('_value'))
     cycle_length = property(operator.attrgetter("_cycle_length"))
+    wells_to_remove = property(operator.attrgetter("_wells_to_remove"))
     unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
                     "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
                     "bmdrc.frac.affected"]
@@ -68,6 +72,7 @@ class LPRClass(DataClass):
             raise Exception("df cannot be empty. Please provide a pandas DataFrame.")
         if not isinstance(theDF, pd.DataFrame):
             raise Exception("df must be a pandas DataFrame")
+        self._ori_df = theDF
         self._df = theDF
 
     @chemical.setter
@@ -134,7 +139,7 @@ class LPRClass(DataClass):
             raise Exception(timename + " is not in the column names of df")
         if timename in self.unacceptable:
             raise Exception(timename + " is not a permitted name. Please rename this column.")
-        self._df[timename] = pd.to_numeric(re.sub("[^0-9]", "", self._df[timename]))
+        self._df[timename] = self._df[timename].str.extract('(\d+)', expand=False)
         self._time = timename
 
     @value.setter
@@ -158,6 +163,14 @@ class LPRClass(DataClass):
         if not isinstance(cycle_length, float):
             raise Exception("cycle_length should be a float")
         self._cycle_length = cycle_length
+
+    @wells_to_remove.setter
+    def wells_to_remove(self, wells_to_remove):
+        if wells_to_remove:
+            self._df = self._df[~(self._df["well"].isin(wells_to_remove))]
+            self._wells_to_remove = wells_to_remove
+
+    # Now, apply transformation from continuous LPR data to dichotomous
 
     
 
