@@ -31,13 +31,23 @@ class LPRClass(DataClass):
     value: (string) name of the column containing the binary values, which should 
     be 0 for absent, and 1 for present. Not used if the light photomotor response 
 
-    cycle_time: (numeric) length of a cycle. Default is 30. 
+    cycle_time: (numeric) length of a light or dark cycle. Default is 20. 
+    The unit is a 6-second measure, so 20 six second measures is 2 minutes.
 
-    wells_to_remove: (string) list of strings with wells to remove
+    cycle_cooldown: (numeric) length of time between cycles. Default is 10.
+    The unit is a 6-second measure, so 10 six second measures is 1 minute. 
+
+    starting_cycle: (string) either "light" or "dark" depending on whether
+    the first measurement was a light or dark cycle. Default is "light". 
+
+    samples_to_remove: (string) list of strings with plate and well ids to remove, written
+    as "plate.id & well". For example if plate 2 and well H01 was to be removed, it should
+    be written as "2 & H01"  # TO Update
     '''
 
     # Define the input checking functions. Include raw and transformed data.frames 
-    def __init__(self, df, chemical, plate, well, concentration, time, value, cycle_length = 30.0, wells_to_remove = None):
+    def __init__(self, df, chemical, plate, well, concentration, time, value, cycle_length = 20.0, 
+                 cycle_cooldown = 10.0, starting_cycle = "light", samples_to_remove = None):
         self.df = df
         self.chemical = chemical
         self.plate = plate
@@ -46,7 +56,10 @@ class LPRClass(DataClass):
         self.time = time
         self.value = value
         self.cycle_length = cycle_length
-        self.wells_to_remove = wells_to_remove
+        self.cycle_cooldown = cycle_cooldown
+        self.starting_cycle = starting_cycle
+        self.samples_to_remove = samples_to_remove
+        self.add_cycles()
 
     # Set property returning functions 
     df = property(operator.attrgetter('_df'))
@@ -56,8 +69,11 @@ class LPRClass(DataClass):
     concentration = property(operator.attrgetter('_concentration'))
     time = property(operator.attrgetter('_time'))
     value = property(operator.attrgetter('_value'))
-    cycle_length = property(operator.attrgetter("_cycle_length"))
-    wells_to_remove = property(operator.attrgetter("_wells_to_remove"))
+    cycle_length = property(operator.attrgetter('_cycle_length'))
+    cycle_cooldown = property(operator.attrgetter('_cycle_cooldown'))
+    starting_cycle = property(operator.attrgetter('_starting_cycle'))
+    samples_to_remove = property(operator.attrgetter('_samples_to_remove'))
+    cycles = property(operator.attrgetter('_cycle'))
     unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
                     "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
                     "bmdrc.frac.affected"]
@@ -139,7 +155,7 @@ class LPRClass(DataClass):
             raise Exception(timename + " is not in the column names of df")
         if timename in self.unacceptable:
             raise Exception(timename + " is not a permitted name. Please rename this column.")
-        self._df[timename] = self._df[timename].str.extract('(\d+)', expand=False)
+        self._df[timename] = self._df[timename].str.extract('(\d+)', expand=False).astype(float)
         self._time = timename
 
     @value.setter
@@ -153,7 +169,7 @@ class LPRClass(DataClass):
             raise Exception(valuename + " is not in the column names of df")
         if valuename in self.unacceptable:
             raise Exception(valuename + " is not a permitted name. Please rename this column.")
-        self._df[valuename] = pd.to_numeric(self._df[valuename])
+        self._df[valuename] = self._df[valuename].astype(float)
         self._value = valuename
 
     @cycle_length.setter
@@ -164,13 +180,85 @@ class LPRClass(DataClass):
             raise Exception("cycle_length should be a float")
         self._cycle_length = cycle_length
 
-    @wells_to_remove.setter
-    def wells_to_remove(self, wells_to_remove):
-        if wells_to_remove:
-            self._df = self._df[~(self._df["well"].isin(wells_to_remove))]
-            self._wells_to_remove = wells_to_remove
+    @cycle_cooldown.setter
+    def cycle_cooldown(self, cycle_cooldown):
+        if not cycle_cooldown:
+            raise Exception("a cycle_cooldown value must be set.")
+        if not isinstance(cycle_cooldown, float):
+            raise Exception("cycle_length should be a float")
+        self._cycle_cooldown = cycle_cooldown
 
-    # Now, apply transformation from continuous LPR data to dichotomous
+    @starting_cycle.setter
+    def starting_cycle(self, starting_cycle):
+        if not starting_cycle:
+            raise Exception("starting_cycle must be either 'light' or 'dark'.")
+        if not starting_cycle in ['light', 'dark']:
+            raise Exception("starting_cycle must be either 'light' or 'dark'.")
+        self._starting_cycle = starting_cycle
+
+    @samples_to_remove.setter
+    def samples_to_remove(self, samples_to_remove):
+        if samples_to_remove:
+            self._df = self._df[~(self._df["well"].isin(samples_to_remove))]
+            self._samples_to_remove = samples_to_remove
+
+    # Write LPR specific formatting function
+    def add_cycles(self):
+        '''Specific LPR function that adds cycle information following users setting cycle_time,
+        cycle_cooldown, and samples_to_remove'''
+
+        print("...defining cycles")
+
+        # Unique and arrange times 
+        cycle_info = pd.DataFrame(self._df[self._time].unique()).rename({0:self._time}, axis = 1)
+        cycle_info[self._time] = cycle_info[self._time].astype(float)
+        cycle_info = cycle_info.sort_values(by = [self._time])
+
+        # Build cycle names and order. First, define all the needed variables to make this happen
+        cycle_order = []
+        first_count = 0
+        gap_a_count = 0
+        gap_b_count = 0
+        second_count = 0
+        cycle_count = 1
+        if self._starting_cycle == "light":
+            other_cycle = "dark"
+        else:
+            other_cycle = "light"
+
+        # Cycle through the light, gap, dark, and then reset
+        for pos in range(len(cycle_info)):
+            if (first_count < self._cycle_length):
+                cycle_order.append(self._starting_cycle + str(cycle_count))
+                first_count += 1
+            elif (gap_a_count < self._cycle_cooldown):
+                cycle_order.append("gap_" + self._starting_cycle + str(cycle_count))
+                gap_a_count += 1
+            elif (second_count < self._cycle_length):
+                cycle_order.append(other_cycle + str(cycle_count))
+                second_count += 1
+            elif (gap_b_count < self._cycle_cooldown):
+                cycle_order.append("gap_" + other_cycle + str(cycle_count))
+                gap_b_count += 1
+            else:
+                cycle_count += 1
+                cycle_order.append(self._starting_cycle + str(cycle_count))
+                first_count = 1
+                gap_a_count = 0
+                second_count = 0
+                gap_b_count = 0
+            
+        # Add essential order information to cycle_info file
+        cycle_info["cycle"] = cycle_order
+
+        # Merge with data.frame
+        self._cycles = cycle_info
+        self._df = self._df.merge(cycle_info)
+
+
+
+
+
 
     
 
