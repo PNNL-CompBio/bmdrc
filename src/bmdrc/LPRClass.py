@@ -253,6 +253,7 @@ class LPRClass(DataClass):
 
         # Merge with data.frame
         self._cycles = cycle_info
+        self._max_cycle = cycle_count
         self._df = self._df.merge(cycle_info)
 
 
