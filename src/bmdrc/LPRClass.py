@@ -76,7 +76,7 @@ class LPRClass(DataClass):
     cycles = property(operator.attrgetter('_cycle'))
     unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
                     "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
-                    "bmdrc.frac.affected"]
+                    "bmdrc.frac.affected", "cycle"]
     
     ################
     ## SET INPUTS ##
