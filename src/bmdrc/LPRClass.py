@@ -59,7 +59,8 @@ class LPRClass(DataClass):
         self.cycle_cooldown = cycle_cooldown
         self.starting_cycle = starting_cycle
         self.samples_to_remove = samples_to_remove
-        self.add_cycles()
+        self.convert_LPR()
+
 
     # Set property returning functions 
     df = property(operator.attrgetter('_df'))
@@ -202,7 +203,7 @@ class LPRClass(DataClass):
             self._df = self._df[~(self._df["well"].isin(samples_to_remove))]
             self._samples_to_remove = samples_to_remove
 
-    # Write LPR specific formatting function
+    # LPR-specific function: determines light and dark cycles
     def add_cycles(self):
         '''Specific LPR function that adds cycle information following users setting cycle_time,
         cycle_cooldown, and samples_to_remove'''
@@ -254,7 +255,102 @@ class LPRClass(DataClass):
         # Merge with data.frame
         self._cycles = cycle_info
         self._max_cycle = cycle_count
-        self._df = self._df.merge(cycle_info)
+        return(self._df.merge(cycle_info))
+
+    # LPR-specific function: Converts continuous to dichotomous following: https://www.sciencedirect.com/science/article/pii/S2468111318300732
+    def to_dichotomous(self, the_df, the_value):
+        '''Specific LPR function that converts continuous AUC or MOV to dichotomous'''
+
+        LPR_plateGroups = the_df[[self._chemical, self._plate, self._concentration, the_value]]
+        LPR_zero = LPR_plateGroups[LPR_plateGroups[self._concentration] == 0].groupby([self._chemical, self._plate])
+
+        # Pull quartile calculations
+        rangeValues = LPR_zero.apply(lambda df: df[the_value].quantile(0.25)).reset_index().rename(columns = {0:"Q1"})
+        rangeValues["Q3"] = LPR_zero.apply(lambda df: df[the_value].quantile(0.75)).reset_index()[0]
+
+        # Add IQR and lower and upper bonds. 
+        rangeValues["IQR"] = rangeValues["Q3"] - rangeValues["Q1"]
+        rangeValues["Low"] = rangeValues["Q1"] - (1.5 * rangeValues["IQR"])
+        rangeValues["High"] = rangeValues["Q3"] + (1.5 * rangeValues["IQR"])
+        rangeValues = rangeValues[[self._chemical, self._plate, "Low", "High"]]
+
+        LPR_plateGroups = pd.merge(LPR_plateGroups, rangeValues)
+        LPR_plateGroups["result"] = (LPR_plateGroups[the_value] < 0) | (LPR_plateGroups[the_value] < LPR_plateGroups["Low"]) | (LPR_plateGroups[the_value] > LPR_plateGroups["High"])
+
+        return(LPR_plateGroups["result"].astype(float))
+    
+    # LPR-specific function: Calculate AUC values
+    def calculate_aucs(self, cycles):
+        '''Specific LPR function for calculating AUC values'''
+
+        # Remove gaps
+        aucs = cycles[~cycles["cycle"].str.contains("gap")].drop(labels = self._time, axis = 1)
+        aucs = aucs.groupby(by = [self._chemical, self._concentration, self._plate, self._well, "cycle"]).sum().reset_index()
+
+        # Initiate list to store all values
+        store_aucs = []
+
+        # Iterate through all cycles, subtracting dark from light
+        for cycle_num in range(self._max_cycle):
+
+            # Pull cycle information
+            cycle_num = cycle_num + 1
+            light_name = "light" + str(cycle_num)
+            dark_name = "dark" + str(cycle_num)
+
+            # Merge light and dark information
+            to_calc_auc = pd.merge(
+                aucs[aucs["cycle"] == light_name].rename(columns = {"value":"light"}).drop("cycle", axis = 1),
+                aucs[aucs["cycle"] == dark_name].rename(columns = {"value":"dark"}).drop("cycle", axis = 1),
+                how = "left"
+            )
+
+            # Sore calculate aucs 
+            store_aucs.append([to_calc_auc["dark"][x] - to_calc_auc["light"][x] for x in range(len(to_calc_auc))])
+
+        # Convert to a data.frame
+        auc_values = pd.DataFrame(store_aucs).transpose()
+
+        # Rename columns 
+        for name in auc_values.columns:
+            new_name = "AUC" + str(int(name) + 1)
+            auc_values.rename(columns={name:new_name}, inplace = True)
+
+        # Add additional columns that are needed
+        auc_process = pd.concat([
+            cycles[[self._chemical, self._concentration, self._plate, self._well]].drop_duplicates(),
+            auc_values
+        ], axis = 1)
+
+        # Convert to dichotomous
+        for x in range(self._max_cycle):
+            value = "AUC" + str(x + 1)
+            auc_process[value] = self.to_dichotomous(value)
+
+        # Return AUC
+        return(auc_process)
+
+    # LPR-specific function: Calculate MOV values
+    def calculate_movs(self, cycles):
+        '''Specific LPR function for calculating MOV values'''
+
+        
+
+    # LPR-specific: Convert LPR continuous to Dichotomous 
+    def convert_LPR(self):
+        '''Wrapper function for all LPR-specific functions for calculating cycles,
+        AUC values, MOV values, and converting them to dichotomous values'''
+
+        # Step 1: Make Cycle Information
+        CycleInfo = self.add_cycles(self)
+
+        # Step 2: Generate AUC calculations
+        AUCs = self.calculate_aucs(self, CycleInfo)
+
+
+
+    
+
 
 
 

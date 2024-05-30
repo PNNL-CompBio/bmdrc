@@ -1206,9 +1206,6 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
         elif model == "quantal linear":
             curve = pd.DataFrame([dose_x_vals, quantal_linear_fun(dose_x_vals, model_params)]).T
 
-
-        ipdb.set_trace()
-
         # Rename curve columns
         curve.columns = ["Dose in uM", "Response"]
 
