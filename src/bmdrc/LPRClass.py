@@ -4,7 +4,7 @@ import numpy as np
 import re
 from abc import abstractmethod
 
-from .BinaryClass import DataClass
+from .BinaryClass import DataClass, BinaryClass
 
 class LPRClass(DataClass):
     '''
@@ -283,6 +283,8 @@ class LPRClass(DataClass):
     def calculate_aucs(self, cycles):
         '''Specific LPR function for calculating AUC values'''
 
+        print("...calculating AUC values")
+
         # Remove gaps
         aucs = cycles[~cycles["cycle"].str.contains("gap")].drop(labels = self._time, axis = 1)
         aucs = aucs.groupby(by = [self._chemical, self._concentration, self._plate, self._well, "cycle"]).sum().reset_index()
@@ -325,7 +327,7 @@ class LPRClass(DataClass):
         # Convert to dichotomous
         for x in range(self._max_cycle):
             value = "AUC" + str(x + 1)
-            auc_process[value] = self.to_dichotomous(value)
+            auc_process[value] = self.to_dichotomous(auc_process, value)
 
         # Return AUC
         return(auc_process)
@@ -334,7 +336,55 @@ class LPRClass(DataClass):
     def calculate_movs(self, cycles):
         '''Specific LPR function for calculating MOV values'''
 
-        
+        print("...calculating MOV values")
+
+        # Determine gap beginning and end times 
+        if self._starting_cycle == "light":
+            self._light_gaps = [(self._cycle_length * (x + 1)) + (x * self._cycle_length * 2) for x in range(self._max_cycle)]
+            self._dark_gaps = [(self._cycle_length * (x + 1) + self._cycle_cooldown) + (x * self._cycle_length * 2) for x in range(self._max_cycle)]
+        else:
+            self._light_gaps = [(self._cycle_length * (x + 1) + self._cycle_cooldown) + (x * self._cycle_length * 2) for x in range(self._max_cycle)]
+            self._dark_gaps = [(self._cycle_length * (x + 1)) + (x * self._cycle_length * 2) for x in range(self._max_cycle)]
+
+        # Select and sum values 
+        movs = cycles[(cycles[self._time].isin(self._light_gaps)) | (cycles[self._time].isin(self._dark_gaps))]
+
+        # Initiate list to store all calculate values 
+        store_movs = []
+
+        # Iterate through all cycles, subtracting dark from light
+        for x in range(self._max_cycle):
+
+            # Merge light and dark information
+            to_calc_mov = pd.merge(
+                movs[movs[self._time] == self._light_gaps[x]].rename(columns = {"value":"light"}).drop([self._time, "cycle"], axis = 1),
+                movs[movs[self._time] == self._dark_gaps[x]].rename(columns = {"value":"dark"}).drop([self._time, "cycle"], axis = 1)
+            )
+
+            # Store calculated MOVs
+            store_movs.append([to_calc_mov["dark"][x] - to_calc_mov["light"][x] for x in range(len(to_calc_mov))]) 
+
+        # Make data.frame
+        mov_values = pd.DataFrame(store_movs).transpose()
+
+        # Rename columns
+        for name in mov_values.columns:
+            new_name = "MOV" + str(int(name) + 1)
+            mov_values.rename(columns={name:new_name}, inplace = True)
+
+        # Add additional columns that are needed
+        mov_process = pd.concat([
+            cycles[[self._chemical, self._concentration, self._plate, self._well]].drop_duplicates(),
+            mov_values
+        ], axis = 1)
+
+        # Convert to dichotomous
+        for x in range(self._max_cycle):
+            value = "MOV" + str(x + 1)
+            mov_process[value] = self.to_dichotomous(mov_process, value)
+
+        # Return AUC
+        return(mov_process)
 
     # LPR-specific: Convert LPR continuous to Dichotomous 
     def convert_LPR(self):
@@ -342,12 +392,25 @@ class LPRClass(DataClass):
         AUC values, MOV values, and converting them to dichotomous values'''
 
         # Step 1: Make Cycle Information
-        CycleInfo = self.add_cycles(self)
+        CycleInfo = self.add_cycles()
 
-        # Step 2: Generate AUC calculations
-        AUCs = self.calculate_aucs(self, CycleInfo)
+        # Step 2: Calculate AUC values
+        AUCs = self.calculate_aucs(CycleInfo)
+
+        # Step 3: Calculate MOV values
+        MOVs = self.calculate_movs(CycleInfo)
+
+        # Step 4: Merge the results
+        NewValues = pd.merge(AUCs, MOVs)
+
+        # Step 5: Make a binary class
+        self._df = NewValues.melt(id_vars = [self._chemical, self._concentration, self._plate, self._well], var_name = "endpoint")
+        self._endpoint = "endpoint"
+        self._value = "value"
 
 
+
+        
 
     
 
