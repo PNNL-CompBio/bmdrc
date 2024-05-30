@@ -405,7 +405,9 @@ class LPRClass(DataClass):
 
         # Step 5: Make a binary class
         self._df = NewValues.melt(id_vars = [self._chemical, self._concentration, self._plate, self._well], var_name = "endpoint")
+        self.endpoint = "endpoint"
         self._endpoint = "endpoint"
+        self.value = "value"
         self._value = "value"
 
 
