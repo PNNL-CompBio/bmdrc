@@ -642,7 +642,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
         NumAffected = self.plate_groups["bmdrc.num.affected"][row]
         NumNonNa = self.plate_groups["bmdrc.num.nonna"][row]
         if NumNonNa != 0:
-            CI = np.abs(astrostats.binom_conf_interval(NumAffected, NumNonNa, confidence_level = 0.95))
+            CI = astrostats.binom_conf_interval(NumAffected, NumNonNa, confidence_level = 0.95)
             self.plate_groups["Low"][row] = np.round(CI[0], 8) 
             self.plate_groups["High"][row] = np.round(CI[1], 8) 
 
@@ -1095,63 +1095,49 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     ## RUN CHECKS ##
     ################
 
-    # If chemical name is all, then all model fits for a chemical will be returned
-    if chemical_name != "all":
-
-        # Check that chemical_name is an acceptable choice
-        if chemical_name in (self.df[self.chemical].unique().tolist()) == False:
-            raise Exception(chemical_name + " is not a recognized chemical_name.")
-        
-    # If endpoint_name is all, then all endpoints will be returned
-    if endpoint_name != "all":
+    # Check that chemical_name is an acceptable choice
+    if chemical_name in (self.df[self.chemical].unique().tolist()) == False:
+        raise Exception(chemical_name + " is not a recognized chemical_name.")
     
-        # Check that endpoint_name is an acceptable choice 
-        if endpoint_name in (self.df[self.endpoint].unique().tolist()) == False:
-            raise Exception(endpoint_name + " is not a recognized endpoint_name.")
+    # Check that endpoint_name is an acceptable choice 
+    if endpoint_name in (self.df[self.endpoint].unique().tolist()) == False:
+        raise Exception(endpoint_name + " is not a recognized endpoint_name.")
 
     # If the user wants the "best" model fit, ensure that the "fit" function has been run
-    if model == "best": 
-        try: 
-            fits = self.model_fits
-        except:
-            raise Exception("Please run the .fit_models() function first to select a 'best' model.")
-    else:
-        if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"] == False):
-            raise Exception(model + " is not an acceptable model option. Acceptable options are: ",
-                            "logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear")
-        
-    # Generate identifier and see if it's in the AIC data.frame
-    endpoint_id = str(chemical_name) + " " + str(endpoint_name)
-    if model == "best" and endpoint_id in (self.aic_df["bmdrc.Endpoint.ID"].tolist()) == False:
-        raise Exception(chemical_name + " and " + endpoint_id + " were not fit to models using the fit function. " + \
-                        "See .aic_df for options.")
-    
-    # Set a best_fit parameter to track whether the "best" model was selected to run 
-    best_fit = False
-    if model == "best":
-        best_fit = True
+    if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"] == False):
+        raise Exception(model + " is not an acceptable model option. Acceptable options are: ",
+                        "logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear")
 
     #####################
     ## CALCULATE CURVE ##
     #####################
 
-    # Auto-select "best" model if user specifies, overwriting the model variable
-    if model == "best":
-        model = self.aic_df[self.aic_df["bmdrc.Endpoint.ID"] == endpoint_id].drop(columns = "bmdrc.Endpoint.ID")["Min_Model"].tolist()[0].lower()
-
     # Subset plate groups to the id
-    to_model = self.plate_groups[(self.plate_groups[self.chemical] == chemical_name) & 
+    the_subset = self.plate_groups[(self.plate_groups[self.chemical] == chemical_name) & 
                                  (self.plate_groups[self.endpoint] == endpoint_name) &  
                                  (self.plate_groups["bmdrc.filter"] == "Keep")]
 
     # Pull only the columns that are needed
-    to_model = to_model[[self.concentration, "bmdrc.num.nonna", "bmdrc.num.affected", "Low", "High"]]
+    to_model = the_subset[[self.concentration, "bmdrc.num.nonna", "bmdrc.num.affected"]]
     
     # Summarize counts 
     to_model = to_model.groupby(by = self.concentration, as_index = False).sum()
 
     # Calculate fraction affected
     to_model["bmdrc.frac.affected"] = to_model["bmdrc.num.affected"] / to_model["bmdrc.num.nonna"]
+
+    # Initialize Low and High columns
+    to_model["Low"] = np.nan
+    to_model["High"] = np.nan
+
+    # Add confidence intervals
+    for row in range(len(to_model)):
+        NumAffected = to_model["bmdrc.num.affected"][row]
+        NumNonNa = to_model["bmdrc.num.nonna"][row]
+        if NumNonNa != 0:
+            CI = astrostats.binom_conf_interval(NumAffected, NumNonNa, confidence_level = 0.95)
+            to_model["Low"][row] = np.round(CI[0], 8) 
+            to_model["High"][row] = np.round(CI[1], 8) 
 
     # Here is a function to build the x range for curves
     def gen_uneven_spacing(doses, int_steps = steps):
@@ -1168,26 +1154,23 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
         dose_x_vals = np.round(gen_uneven_spacing(to_model[self.concentration].tolist()), 4)
     
         # Extract model parameters. If not fit, calculate parameters 
-        if best_fit:
-            model_params = self.model_fits[endpoint_id][1][1]
-        else:
-            if model == "logistic":
-                model_params = Logistic(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
-            elif model == "gamma":
-                model_params = Gamma(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
-            elif model == "weibull":
-                model_params = Weibull(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
-            elif model == "log logistic":
-                model_params = Log_Logistic(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
-            elif model == "probit":
-                model_params = Probit(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
-            elif model == "log probit":
-                model_params = Log_Probit(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
-            elif model == "multistage2":
-                model_params = Multistage_2(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
-            elif model == "quantal linear":
-                model_params = Quantal_Linear(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
-                
+        if model == "logistic":
+            model_params = Logistic(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+        elif model == "gamma":
+            model_params = Gamma(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+        elif model == "weibull":
+            model_params = Weibull(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+        elif model == "log logistic":
+            model_params = Log_Logistic(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+        elif model == "probit":
+            model_params = Probit(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+        elif model == "log probit":
+            model_params = Log_Probit(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+        elif model == "multistage2":
+            model_params = Multistage_2(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+        elif model == "quantal linear":
+            model_params = Quantal_Linear(to_model[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy()).fit().params
+            
         # Make the resulting data.frame
         if model == "logistic":
             curve = pd.DataFrame([dose_x_vals, logistic_fun(dose_x_vals, model_params)]).T

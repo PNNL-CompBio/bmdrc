@@ -27,4 +27,4 @@ An example vignette for the dichotomous (binary) data is located [here](./vignet
 Example data for dichotomous and light photomotor response data can be found [here](./data/).
 
 ### Example Report
-A sample for the report output can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/Benchmark%20Dose%20Curves.md)
+A sample for the generated report output can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/Benchmark%20Dose%20Curves.md)
