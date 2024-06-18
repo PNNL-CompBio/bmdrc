@@ -49,7 +49,7 @@ def benchmark_dose(self, path):
     
     self.output_res_benchmark_dose = BMDS_Final
 
-def report_binary(self, out_folder, report_name, max_curve_plots):
+def report_binary(self, out_folder, report_name):
 
     if os.path.isdir(out_folder) == False:
         os.mkdir(out_folder)
@@ -58,19 +58,40 @@ def report_binary(self, out_folder, report_name, max_curve_plots):
     ## PULL INPUT DATA CHARACTERISTICS ##
     #####################################
 
-    out_string = "# " + str(report_name) + "\n\n" + \
-    "## Input Data\n\n" + \
-    "A **binary class** object was created using data in **" + str(self.format) + "** format." + \
-    " The following column names were set:\n\n" + \
-    "|Parameter|Column Name|\n" + \
-    "|---------|-----------|\n" + \
-    "|Chemical|" + str(self.chemical) + "|\n" + \
-    "|Plate|" + str(self.plate) + "|\n" + \
-    "|Well|" + str(self.well) + "|\n" + \
-    "|Concentration|"  + str(self.concentration) + "|\n" + \
-    "|Endpoint|"  + str(self.endpoint) + "|\n" + \
-    "|Value|"  + str(self.value) + "|\n\n" + \
-    "## Pre-Processing\n\n#### **Combine & Make New Endpoints**\n"
+    if str(type(self)) != "<class 'bmdrc.LPRClass.LPRClass'>":
+
+        out_string = "# " + str(report_name) + "\n\n" + \
+        "## Input Data\n\n" + \
+        "A **binary class** object was created using data in **" + str(self.format) + "** format." + \
+        " The following column names were set:\n\n" + \
+        "|Parameter|Column Name|\n" + \
+        "|---------|-----------|\n" + \
+        "|Chemical|" + str(self.chemical) + "|\n" + \
+        "|Plate|" + str(self.plate) + "|\n" + \
+        "|Well|" + str(self.well) + "|\n" + \
+        "|Concentration|"  + str(self.concentration) + "|\n" + \
+        "|Endpoint|"  + str(self.endpoint) + "|\n" + \
+        "|Value|"  + str(self.value) + "|\n\n" + \
+        "## Pre-Processing\n\n#### **Combine & Make New Endpoints**\n"
+
+    else: 
+
+        out_string = "# " + str(report_name) + "\n\n" + \
+        "## Input Data\n\n" + \
+        "A **lpr class** object was created." + \
+        " The following column names were set:\n\n" + \
+        "|Parameter|Column Name|\n" + \
+        "|---------|-----------|\n" + \
+        "|Chemical|" + str(self.chemical) + "|\n" + \
+        "|Plate|" + str(self.plate) + "|\n" + \
+        "|Well|" + str(self.well) + "|\n" + \
+        "|Concentration|"  + str(self.concentration) + "|\n" + \
+        "|Time|"  + str(self.time) + "|\n" + \
+        "|Value|"  + str(self.value) + "|\n" + \
+        "|Cycle Length|" + str(self.cycle_length) + "|\n" + \
+        "|Cycle Cooldown|" + str(self.cycle_cooldown) + "|\n" + \
+        "|Starting Cycle|" + str(self.starting_cycle) + "|\n\n" + \
+        "## Pre-Processing\n\n#### **Combine & Make New Endpoints**\n"
 
     ############################
     ## PRE-PROCESSING RESULTS ##

@@ -75,8 +75,8 @@ class DataClass(object):
         benchmark_dose(self, path)
 
     @abstractmethod
-    def report(self, out_folder, report_name = "Benchmark Dose Curves", max_curve_plots = 5):
-        report_binary(self, out_folder, report_name, max_curve_plots)
+    def report(self, out_folder, report_name = "Benchmark Dose Curves"):
+        report_binary(self, out_folder, report_name)
 
 
 
