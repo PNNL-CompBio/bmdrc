@@ -4,7 +4,7 @@ Python library for the calculation of **B**ench**M**ark **D**ose **R**esponse **
 
 # General Schematic 
 
-The main bmdrc function was built to calculate benchmark dose (BMD) response curves for dichotomous (morphological) and light photomotor response datasets, where continuous variables are transformed to dichotomous as described in [Thomas et al 2019](https://www.sciencedirect.com/science/article/pii/S2468111318300732). Potential outputted files include a csv file of all final BMDs and their estimation errors, a csv file of model fits (AIC) for each endpoint, and an html report containing information on how much data was filtered and why, as well as interactive response curve plots. Users may specify their outputs of interest. 
+The bmdrc library was built to calculate benchmark dose (BMD) response curves for dichotomous (morphological) and light photomotor response datasets, where continuous variables are transformed to dichotomous as described in [Thomas et al 2019](https://www.sciencedirect.com/science/article/pii/S2468111318300732). Potential outputted files include a csv file of all final BMDs and their estimation errors, a csv file of model fits (AIC) for each endpoint, and an html report containing information on how much data was filtered and why, as well as interactive response curve plots. Users may specify their outputs of interest. 
 
 ![General bmdrc inputs and outputs](./bmdrc.png)
 
@@ -17,6 +17,16 @@ The main bmdrc function was built to calculate benchmark dose (BMD) response cur
 4. *Model Fitting Modules:* Fit EPA-recommended models to data
 
 5. *Output Modules:* Select tables to output as csvs. View plots in a HTML report.
+
+# How to install the package
+
+First, install the package from pip using:
+
+`pip install bmdrc`
+
+Or from github using:
+
+`pip install git+https://github.com/PNNL-CompBio/bmdrc`
 
 # How to use the package 
 
