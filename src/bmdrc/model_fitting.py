@@ -799,8 +799,11 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
             model_results[endpoint] = [p_values, models[potential_models[0]], potential_models[0], aics, bmd10s, bmdls]
         else:
             bmdls2 = [x for x in potential_models if np.isnan(bmdls[x]) == False]
-            bmdls2_data = [bmdls[x] for x in potential_models if np.isnan(bmdls[x]) == False]
-            selected_model = bmdls2[np.argmin(bmdls2_data)]
+            if len(bmdls2) == 0:
+                selected_model = aics2[np.argmin(aics2_data)]
+            else:
+                bmdls2_data = [bmdls[x] for x in potential_models if np.isnan(bmdls[x]) == False]
+                selected_model = bmdls2[np.argmin(bmdls2_data)]
             model_results[endpoint] = [p_values, models[selected_model], selected_model, aics, bmd10s, bmdls]
 
     self.model_fits = model_results
