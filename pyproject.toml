@@ -1,27 +1,27 @@
 [project]
 name = "bmdrc"
-version = "0.0.1"
+version = "0.0.1.1"
 authors = [
     {name="David Degnan", email="david.degnan@pnnl.gov"},
     {name="Sara Gosline", email="sara.gosline@pnnl.gov"},
     {name="Katrina Waters", email="katrina.waters@pnnl.gov"},
 ]
-description = "A small example package"
+description = "A package for fitting benchmark dose curves to dichotomous data and light photomotor response data"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "pandas==2.1.4",
-    "numpy==1.26.2",
-    "scipy==1.11.4",
-    "astropy==6.0.0",
+    "pandas>=2.1.4",
+    "numpy>=1.26.2",
+    "scipy>=1.11.4",
+    "astropy>=6.0.0",
     "argparse",
-    "statsmodels==0.14.1",
-    "matplotlib==3.8.2"   
+    "statsmodels>=0.14.1",
+    "matplotlib>=3.8.2"
 ]
 
 [project.urls]
 Homepage = "https://github.com/PNNL-CompBio/bmdrc"
-Issues = "hhttps://github.com/PNNL-CompBio/bmdrc"
+Issues = "https://github.com/PNNL-CompBio/bmdrc"
 
 [build-system]
 requires = ["setuptools>=61.0"]
