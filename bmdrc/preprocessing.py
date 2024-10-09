@@ -26,15 +26,11 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
     # Iterate through each endpoint to confirm it is a valid choice 
     for endpoint in endpoint_name:
         if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
-            raise Exception(endpoint + " is not in an endpoint in the DataClass object")
+            raise Exception(endpoint + " is not an endpoint in the DataClass object.")
 
     # Convert endpoint value to a list
     if isinstance(endpoint_value, list) == False:
         endpoint_value = [endpoint_value]
-
-    # Confirm the value exists for at least one endpoint
-    if any(self.df[self.df[self.endpoint].isin(endpoint_name)][self.value].isin(endpoint_value)) == False:
-        raise Exception("None of the provided endpoint_names contain the provided endpoint_value")
     
     # Iterate through each except endpoint to confirm they are valid choices
     if except_endpoint is not None:
@@ -46,7 +42,7 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
         # Check each endpoint
         for endpoint in except_endpoint:
             if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
-                raise Exception(endpoint + " is not in an endpoint in the DataClass object")
+                raise Exception(endpoint + " is not an endpoint in the DataClass object.")
             
     ####################################
     ## SET WELLS TO NA TO REMOVE THEM ##
@@ -109,6 +105,17 @@ def endpoint_combine(self, endpoint_dict):
 
     # Define a small function to create new endpoints
     def new_endpoint(new_name, endpoints):
+        
+        # Convert endpoints to list 
+        if isinstance(endpoints, list) == False:
+            endpoints = [endpoints]
+
+        # If endpoints are not in the data.frame, trigger error 
+        for endpoint in endpoints: 
+            if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
+                raise Exception(endpoint + " is not an endpoint in the DataClass object.")
+
+        # Combine endpoints 
         sub_df = self.df[self.df[self.endpoint].isin(endpoints)].copy()
         sub_df[self.endpoint] = new_name
         sub_df = sub_df.groupby(by = [self.chemical, self.concentration, self.plate, self.well, self.endpoint], as_index = False).sum()
@@ -119,7 +126,7 @@ def endpoint_combine(self, endpoint_dict):
     for NewEndpoint in endpoint_dict:
 
         if NewEndpoint in self.df[self.endpoint].unique().tolist():
-            print(NewEndpoint + " is already an existing endpoint")
+            raise Exception(NewEndpoint + " is already an existing endpoint")
         else:
             self.df = pd.concat([self.df, new_endpoint(NewEndpoint, endpoint_dict[NewEndpoint])])
 
@@ -130,9 +137,8 @@ def endpoint_combine(self, endpoint_dict):
     # Only add new inputs to the dictionary. 
     if hasattr(self, "report_combination"):
         endpoint_dict.update(self.report_combination)
-    
-    # Set value 
-    self.report_combination = endpoint_dict
+    else:
+        self.report_combination = endpoint_dict
 
 def remove_endpoints(self, endpoint_name):
     '''
