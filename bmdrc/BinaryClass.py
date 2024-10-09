@@ -160,39 +160,30 @@ class BinaryClass(DataClass):
 
     @plate.setter
     def plate(self, platename):
-        if not platename: 
-           raise Exception("plate cannot be empty. Please enter the column name for \
-                            the plate ids.")
         if not isinstance(platename, str):
             raise Exception("plate must be a name of a column in df.")
         if not platename in self._df.columns:
-            raise Exception(platename + " is not in the column names of df")
+            raise Exception(platename + " is not in the column names of df.")
         if platename in self.unacceptable:
             raise Exception(platename + " is not a permitted name. Please rename this column.")
         self._plate = platename
         
     @well.setter
     def well(self, wellname):
-        if not wellname: 
-           raise Exception("well cannot be empty. Please enter the column name for \
-                            the well ids.")
         if not isinstance(wellname, str):
             raise Exception("well must be a name of a column in df.")
         if not wellname in self._df.columns:
-            raise Exception(wellname + " is not in the column names of df")
+            raise Exception(wellname + " is not in the column names of df.")
         if wellname in self.unacceptable:
             raise Exception(wellname + " is not a permitted name. Please rename this column.")
         self._well = wellname
         
     @concentration.setter
     def concentration(self, concentrationname):
-        if not concentrationname: 
-           raise Exception("concentration cannot be empty. Please enter the column name for \
-                            the concentration.")
         if not isinstance(concentrationname, str):
             raise Exception("concentration must be a name of a column in df.")
         if not concentrationname in self._df.columns:
-            raise Exception(concentrationname + " is not in the column names of df")
+            raise Exception(concentrationname + " is not in the column names of df.")
         if concentrationname in self.unacceptable:
             raise Exception(concentrationname + " is not a permitted name. Please rename this column.")
         self._df[concentrationname] = pd.to_numeric(self._df[concentrationname])
@@ -211,33 +202,26 @@ class BinaryClass(DataClass):
     @endpoint.setter
     def endpoint(self, endpointname):
         if self._format == "long":
-            if not endpointname: 
-                raise Exception("endpoint cannot be empty. Please enter the column name for \
-                                the endpoint.")
             if not isinstance(endpointname, str):
                 raise Exception("endpoint must be a name of a column in df.")
             if not endpointname in self._df.columns:
-                raise Exception(endpointname + " is not in the column names of df")
+                raise Exception(endpointname + " is not in the column names of df.")
             if endpointname in self.unacceptable:
                 raise Exception(endpointname + " is not a permitted name. Please rename this column.")
             self._endpoint = endpointname
         else:
             self._endpoint = "endpoint"
-
         
     @value.setter
     def value(self, valuename):
-        if self._format == "value":
-            if not valuename: 
-                raise Exception("value cannot be empty. Please enter the column name for \
-                                    the value.")
+        if self._format == "long":
             if not isinstance(valuename, str):
                 raise Exception("value must be a name of a column in df.")
             if not valuename in self._df.columns:
-                raise Exception(valuename + " is not in the column names of df")
+                raise Exception(valuename + " is not in the column names of df.")
             if valuename in self.unacceptable:
                 raise Exception(valuename + " is not a permitted name. Please rename this column.")
-            if not np.isin(self._df["value"].unique().tolist(), [0,1]).all():
+            if not set(self._df[valuename]) == {0, 1}:
                 raise Exception("The value column must be comprised of only zeroes and ones.")
             self._value = valuename
         else:

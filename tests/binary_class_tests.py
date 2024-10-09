@@ -24,6 +24,7 @@ def test_long_BinaryClass():
         format = "long" # The format of the input data, either 'long' or 'wide' is accepted
     )
     assert isinstance(LongTest, bmdrc.BinaryClass.BinaryClass)
+    assert (LongTest.df.columns == ['chemical.id', 'concentration', 'plate.id', 'well', 'endpoint', 'value']).all()
 
 # Test to ensure wide data runs without error
 def test_wide_BinaryClass():
@@ -39,6 +40,7 @@ def test_wide_BinaryClass():
         format = "wide"
     )
     assert isinstance(WideTest, bmdrc.BinaryClass.BinaryClass)
+    assert (WideTest.df.columns == ['chemical.id', 'conc', 'plate.id', 'well', 'endpoint', 'value']).all()
     
 # Test wrong inputs for data.frame 
 def test_df():
@@ -75,7 +77,7 @@ def test_chemical():
     # The chemical must be a string
     with pytest.raises(Exception, match = "chemical must be a name of a column in df."):
         BinaryClass.BinaryClass(
-            df = pd.read_csv("data/Binary_Morphology_Wide.csv"),
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
             chemical = 3, 
             plate = "plate.id", 
             well = "well", 
@@ -88,7 +90,7 @@ def test_chemical():
     # The chemical must be a name in the dataframe 
     with pytest.raises(Exception, match = "cantelope is not in the column names of df."):
         BinaryClass.BinaryClass(
-            df = pd.read_csv("data/Binary_Morphology_Wide.csv"),
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
             chemical = "cantelope", 
             plate = "plate.id", 
             well = "well", 
@@ -98,10 +100,10 @@ def test_chemical():
             format = "long"
         )
     
-    # The chemical name must not be an unaceeptable name 
+    # The chemical name must not be an unacceptable name 
     with pytest.raises(Exception, match = "bmdrc.Well.ID is not a permitted name. Please rename this column."):
 
-        df2 = pd.read_csv("data/Binary_Morphology_Wide.csv")
+        df2 = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1)
         df2 = df2.rename({"chemical.id":"bmdrc.Well.ID"}, axis = 1)
 
         BinaryClass.BinaryClass(
@@ -112,5 +114,265 @@ def test_chemical():
             concentration = "concentration", 
             endpoint = "endpoint",
             value = "value", 
+            format = "long"
+        )
+
+# Test wrong inputs for plates
+def test_plates():
+
+    # The plate must be a string
+    with pytest.raises(Exception, match = "plate must be a name of a column in df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = 42, 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+
+    # The plate must be a name in the dataframe 
+    with pytest.raises(Exception, match = "taco salad is not in the column names of df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "taco salad", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+    
+    # The chemical name must not be an unacceptable name 
+    with pytest.raises(Exception, match = "bmdrc.num.tot is not a permitted name. Please rename this column."):
+
+        df2 = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1)
+        df2 = df2.rename({"plate.id":"bmdrc.num.tot"}, axis = 1)
+
+        BinaryClass.BinaryClass(
+            df = df2,
+            chemical = "chemical.id", 
+            plate = "bmdrc.num.tot", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+
+# Test wrong inputs for wells
+def test_wells():
+
+    # The well must be a string
+    with pytest.raises(Exception, match = "well must be a name of a column in df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = False, 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+
+    # The well must be a name in the dataframe 
+    with pytest.raises(Exception, match = "Tuesday is not in the column names of df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "Tuesday", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+    
+    # The well must not be an unacceptable name 
+    with pytest.raises(Exception, match = "bmdrc.num.nonna is not a permitted name. Please rename this column."):
+
+        df2 = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1)
+        df2 = df2.rename({"well":"bmdrc.num.nonna"}, axis = 1)
+
+        BinaryClass.BinaryClass(
+            df = df2,
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "bmdrc.num.nonna", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+
+# Test wrong inputs for concentrations
+def test_concs():
+
+    # The concentration must be a string
+    with pytest.raises(Exception, match = "concentration must be a name of a column in df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = 22, 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+
+    # The concentration must be a name in the dataframe 
+    with pytest.raises(Exception, match = "Star Wars is not in the column names of df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "Star Wars", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+    
+    # The concentration name must not be an unacceptable name 
+    with pytest.raises(Exception, match = "bmdrc.frac.affected is not a permitted name. Please rename this column."):
+
+        df2 = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1)
+        df2 = df2.rename({"concentration":"bmdrc.frac.affected"}, axis = 1)
+
+        BinaryClass.BinaryClass(
+            df = df2,
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "bmdrc.frac.affected", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+
+# Test wrong inputs for format
+def test_format():
+
+    # Format must be wide or long
+    with pytest.raises(Exception, match = "format must be 'long' or 'wide'."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "short"
+        )
+
+# Test wrong inputs for endpoints
+def test_endpoints():
+
+    # The endpoint must be a string
+    with pytest.raises(Exception, match = "endpoint must be a name of a column in df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = 55,
+            value = "value", 
+            format = "long"
+        )
+
+    # The endpoint must be a name in the dataframe 
+    with pytest.raises(Exception, match = "Python is not in the column names of df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "Python",
+            value = "value", 
+            format = "long"
+        )
+    
+    # The endpoint must not be an unacceptable name 
+    with pytest.raises(Exception, match = "bmdrc.frac.affected is not a permitted name. Please rename this column."):
+
+        df2 = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1)
+        df2 = df2.rename({"endpoint":"bmdrc.frac.affected"}, axis = 1)
+
+        BinaryClass.BinaryClass(
+            df = df2,
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "bmdrc.frac.affected",
+            value = "value", 
+            format = "long"
+        )
+
+# Test wrong inputs for values
+def test_values():
+
+    # The value must be a string
+    with pytest.raises(Exception, match = "value must be a name of a column in df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = 22, 
+            format = "long"
+        )
+
+    # The value must be a name in the dataframe 
+    with pytest.raises(Exception, match = "Gogurt is not in the column names of df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "Gogurt", 
+            format = "long"
+        )
+    
+    # The value must not be an unacceptable name 
+    with pytest.raises(Exception, match = "bmdrc.filter is not a permitted name. Please rename this column."):
+
+        df2 = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1)
+        df2 = df2.rename({"value":"bmdrc.filter"}, axis = 1)
+
+        BinaryClass.BinaryClass(
+            df = df2,
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "bmdrc.filter", 
+            format = "long"
+        )
+
+    # The value column must contain zeroes and ones
+    with pytest.raises(Exception, match = "The value column must be comprised of only zeroes and ones."):
+
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "value",
+            value = "endpoint", 
             format = "long"
         )
