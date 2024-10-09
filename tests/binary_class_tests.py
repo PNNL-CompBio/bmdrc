@@ -10,8 +10,8 @@ from bmdrc import BinaryClass
 
 ## Binary Class Tests ## 
 
-# Test to ensure the function runs without error
-def make_BinaryClass():
+# Test to ensure long data runs without error 
+def test_long_BinaryClass():
 
     LongTest = BinaryClass.BinaryClass(
         df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1), # Input is a pandas DataFrame
@@ -23,6 +23,10 @@ def make_BinaryClass():
         value = "value", # The name of the column with values
         format = "long" # The format of the input data, either 'long' or 'wide' is accepted
     )
+    assert isinstance(LongTest, bmdrc.BinaryClass.BinaryClass)
+
+# Test to ensure wide data runs without error
+def test_wide_BinaryClass():
 
     WideTest = BinaryClass.BinaryClass(
         df = pd.read_csv("data/Binary_Morphology_Wide.csv"),
@@ -34,11 +38,26 @@ def make_BinaryClass():
         value = "value",
         format = "wide"
     )
+    assert isinstance(WideTest, bmdrc.BinaryClass.BinaryClass)
     
-# Test wrong inputs 
-def test_wrong_inputs():
+# Test wrong inputs for data.frame 
+def test_df():
 
-    with pytest.raises(Exception, match = "df cannot be empty. Please provide a pandas DataFrame.") as test_info:
+    # The df must be a pandas DataFrame, no exceptions
+    with pytest.raises(Exception, match = "df must be a pandas DataFrame"):
+        BinaryClass.BinaryClass(
+            df = "celery",
+            chemical = "chemical.id", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+    
+    # The df must be a pandas DataFrame with data in it 
+    with pytest.raises(Exception, match = "df cannot be empty. Please provide a pandas DataFrame."):
         BinaryClass.BinaryClass(
             df = pd.DataFrame(),
             chemical = "chemical.id", 
@@ -49,11 +68,49 @@ def test_wrong_inputs():
             value = "value", 
             format = "long"
         )
-    assert test_info.type == Exception
 
-def run_tests():
-    make_BinaryClass()
-    test_wrong_inputs()
+# Test wrong inputs for chemicals
+def test_chemical():
 
-run_tests()
+    # The chemical must be a string
+    with pytest.raises(Exception, match = "chemical must be a name of a column in df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Morphology_Wide.csv"),
+            chemical = 3, 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
 
+    # The chemical must be a name in the dataframe 
+    with pytest.raises(Exception, match = "cantelope is not in the column names of df."):
+        BinaryClass.BinaryClass(
+            df = pd.read_csv("data/Binary_Morphology_Wide.csv"),
+            chemical = "cantelope", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )
+    
+    # The chemical name must not be an unaceeptable name 
+    with pytest.raises(Exception, match = "bmdrc.Well.ID is not a permitted name. Please rename this column."):
+
+        df2 = pd.read_csv("data/Binary_Morphology_Wide.csv")
+        df2 = df2.rename({"chemical.id":"bmdrc.Well.ID"}, axis = 1)
+
+        BinaryClass.BinaryClass(
+            df = df2,
+            chemical = "bmdrc.Well.ID", 
+            plate = "plate.id", 
+            well = "well", 
+            concentration = "concentration", 
+            endpoint = "endpoint",
+            value = "value", 
+            format = "long"
+        )

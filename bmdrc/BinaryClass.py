@@ -142,21 +142,18 @@ class BinaryClass(DataClass):
 
     @df.setter
     def df(self, theDF):
-        if theDF.empty:
-            raise Exception("df cannot be empty. Please provide a pandas DataFrame.")
         if not isinstance(theDF, pd.DataFrame):
             raise Exception("df must be a pandas DataFrame")
+        if theDF.empty:
+            raise Exception("df cannot be empty. Please provide a pandas DataFrame.")
         self._df = theDF
 
     @chemical.setter
     def chemical(self, chemicalname):
-        if not chemicalname: 
-           raise Exception("chemical cannot be empty. Please enter the column name for \
-                            the chemicals.")
         if not isinstance(chemicalname, str):
             raise Exception("chemical must be a name of a column in df.")
         if not chemicalname in self._df.columns:
-            raise Exception(chemicalname + " is not in the column names of df")
+            raise Exception(chemicalname + " is not in the column names of df.")
         if chemicalname in self.unacceptable:
             raise Exception(chemicalname + " is not a permitted name. Please rename this column.")
         self._chemical = chemicalname
