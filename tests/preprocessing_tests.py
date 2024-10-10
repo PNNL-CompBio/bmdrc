@@ -3,15 +3,16 @@ import numpy as np
 
 import pytest
 import bmdrc
-from bmdrc import BinaryClass, filtering
+from bmdrc import BinaryClass
 
 ## How to calculate coverage (from within main package directory): 
 # coverage run --source=bmdrc -m pytest -x tests/*
 # coverage report
 # coverage html
 
-## Preproccessing tests ## 
+## Preprocessing tests ## 
 
+# Create data Tests
 Long_Test = BinaryClass.BinaryClass(
     df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1), # Input is a pandas DataFrame
     chemical = "chemical.id", # The name of the chemical column 
