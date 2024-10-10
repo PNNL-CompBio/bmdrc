@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 
 import pytest
-import bmdrc
 from bmdrc import BinaryClass
 
 ## How to calculate coverage (from within main package directory): 

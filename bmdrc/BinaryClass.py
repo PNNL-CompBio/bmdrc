@@ -63,8 +63,8 @@ class DataClass(object):
         fit_the_models(self, gof_threshold, aic_threshold, model_selection)
 
     @abstractmethod
-    def response_curve(self, chemical_name, endpoint_name, model = "best", plot = True, steps = 10):
-        gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps)
+    def response_curve(self, chemical_name, endpoint_name, model, steps = 10):
+        gen_response_curve(self, chemical_name, endpoint_name, model, steps)
 
     ####################
     ## OUTPUT MODULES ##

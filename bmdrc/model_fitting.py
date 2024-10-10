@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import re
 from astropy import stats as astrostats
 from statsmodels.base.model import GenericLikelihoodModel
-from scipy.interpolate import make_interp_spline
+
+from . import filtering
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -1030,9 +1031,7 @@ def fit_the_models(self, gof_threshold, aic_threshold, model_selection):
     goodness of fit p_value be greater than 0.1. From there, a combination of 
     EPA guidance and [https://journals.sagepub.com/doi/10.1177/0049124104268644] 
     recommends AICs within 2 of the lowest AIC score as equivalent fits. "lowest BMDL"
-    follows the EPA guidance of then selecting the model with the lowest BMDL,
-    while "combined" follows the EPA guidance of a multi-model approach to 
-    calculating the benchmark dose. 
+    follows the EPA guidance of then selecting the model with the lowest BMDL.
     '''
 
     ##################
@@ -1055,19 +1054,19 @@ def fit_the_models(self, gof_threshold, aic_threshold, model_selection):
     except ValueError:
         raise Exception("aic_threshold must be a float.")
     
-    # Assert that model_selection is either "lowest BMDL" or "combined"
-    if (model_selection != "lowest BMDL" and model_selection != "combined"):
-        raise Exception("Currently only 'lowest BMDL' and 'combined' are supported for model_selection")
+    # Assert that model_selection is "lowest BMDL"
+    if (model_selection != "lowest BMDL"):
+        raise Exception("Currently only 'lowest BMDL' is supported for model_selection.")
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
     ##############################
 
     try:
-        self.plate_groups
+        self.plate_groups 
     except AttributeError:
         print("No filters have been applied to this dataset, which is unusual. Proceeding with analysis.")
-        self.make_plate_groups(self)
+        filtering.make_plate_groups(self)
 
     ################
     ## FIT MODELS ##
@@ -1088,8 +1087,35 @@ def fit_the_models(self, gof_threshold, aic_threshold, model_selection):
 
     self.report_model_fits = True 
 
+def curve_plot(self, to_model, curve, chemical_name, endpoint_name, model):
 
-def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
+    # Build figure
+    fig = plt.figure(figsize = (10, 5))
+
+    # Turn off auto-display of plots
+    plt.ioff()
+
+    # Add points 
+    plt.scatter(to_model[self.concentration], to_model["bmdrc.frac.affected"], color = "black")
+
+    # Add curve
+    plt.plot(curve["Dose in uM"], curve["Response"], color = "black")
+
+    # Add confidence intervals
+    for row in range(len(to_model)):
+        plt.plot([to_model[self.concentration][row], to_model[self.concentration][row]], [to_model["Low"][row], to_model["High"][row]], color = "black")
+
+    # Add labels and make plot
+    plt.xlabel("Dose in uM")
+    plt.ylabel("Response (Proportion Affected)")
+
+    # Add title
+    plt.title("Chemical: " + str(chemical_name) + ", Endpoint: " + str(endpoint_name) + ", Model: " + model)
+
+    return(fig)
+
+
+def gen_response_curve(self, chemical_name, endpoint_name, model, steps):
     '''
     Generate the x and y coordinates of the curve, and optionally a plot 
     '''
@@ -1099,17 +1125,16 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     ################
 
     # Check that chemical_name is an acceptable choice
-    if chemical_name in (self.df[self.chemical].unique().tolist()) == False:
+    if (chemical_name in (self.df[self.chemical].unique().tolist())) == False:
         raise Exception(chemical_name + " is not a recognized chemical_name.")
     
     # Check that endpoint_name is an acceptable choice 
-    if endpoint_name in (self.df[self.endpoint].unique().tolist()) == False:
+    if (endpoint_name in (self.df[self.endpoint].unique().tolist()))== False:
         raise Exception(endpoint_name + " is not a recognized endpoint_name.")
 
-    # If the user wants the "best" model fit, ensure that the "fit" function has been run
-    if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"] == False):
-        raise Exception(model + " is not an acceptable model option. Acceptable options are: ",
-                        "logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear")
+    # Select fit by model
+    if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"]) == False:
+        raise Exception(model + " is not an acceptable model option. Acceptable options are: logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear.")
 
     #####################
     ## CALCULATE CURVE ##
@@ -1212,33 +1237,8 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, plot, steps):
     ci_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_confidence_intervals"
     setattr(self, ci_name, to_model)
 
-    ###########################
-    ## ADD PLOT IF NECESSARY ##
-    ###########################
-
-    # Save results 
-    if plot:
-
-        # Build figure
-        fig = plt.figure(figsize = (10, 5))
-
-        # Add points 
-        plt.scatter(to_model[self.concentration], to_model["bmdrc.frac.affected"], color = "black")
-
-        # Add curve
-        plt.plot(curve["Dose in uM"], curve["Response"], color = "black")
-
-        # Add confidence intervals
-        for row in range(len(to_model)):
-            plt.plot([to_model[self.concentration][row], to_model[self.concentration][row]], [to_model["Low"][row], to_model["High"][row]], color = "black")
-
-        # Add labels and make plot
-        plt.xlabel("Dose in uM")
-        plt.ylabel("Response (Proportion Affected)")
-
-        # Add title
-        plt.title("Chemical: " + str(chemical_name) + ", Endpoint: " + str(endpoint_name) + ", Model: " + model)
-
-        return fig
+    # Save results
+    fig_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_curve_plot"
+    setattr(self, fig_name, curve_plot(self, to_model, curve, chemical_name, endpoint_name, model))
 
     
