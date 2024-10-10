@@ -136,7 +136,7 @@ def endpoint_combine(self, endpoint_dict):
 
     # Only add new inputs to the dictionary. 
     if hasattr(self, "report_combination"):
-        endpoint_dict.update(self.report_combination)
+        self.report_combination = self.report_combination | endpoint_dict
     else:
         self.report_combination = endpoint_dict
 
@@ -175,17 +175,3 @@ def remove_endpoints(self, endpoint_name):
         self.report_endpoint_removal.extend(endpoint_name)
     else:
         self.report_endpoint_removal = endpoint_name
-
-
-
-
-
-
-    
-
-
-
-
-    
-        
-

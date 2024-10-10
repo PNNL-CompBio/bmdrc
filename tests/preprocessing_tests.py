@@ -68,7 +68,11 @@ def test_endpoint_combine():
         endpoint_dict2 = {"ANY24":["NC24", "DP24", "SM24", "JAW"]}
         Long_Test.combine_and_create_new_endpoints(endpoint_dict2)
 
-    # T
+    # Add another endpoint
+    Long_Test.combine_and_create_new_endpoints({"THE24":["NC24", "SM24"]})
+
+    # Test the stored dictionary dictionary
+    assert Long_Test.report_combination == {"ANY24":["NC24", "DP24", "SM24"], "ANY":["NC24", "DP24", "SM24", "JAW"], "THE24":["NC24", "SM24"]}
 
     
 
