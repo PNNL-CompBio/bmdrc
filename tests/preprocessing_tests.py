@@ -63,16 +63,31 @@ def test_endpoint_combine():
                      "ANY":["NC24", "DP24", "SM24", "JAW"]}
     Long_Test.combine_and_create_new_endpoints(endpoint_dict)
 
-    # Add an existing endpoint
+    # Duplicate names are not permitted
     with pytest.raises(Exception, match = "ANY24 is already an existing endpoint"):
         endpoint_dict2 = {"ANY24":["NC24", "DP24", "SM24", "JAW"]}
         Long_Test.combine_and_create_new_endpoints(endpoint_dict2)
 
     # Add another endpoint
-    Long_Test.combine_and_create_new_endpoints({"THE24":["NC24", "SM24"]})
+    Long_Test.combine_and_create_new_endpoints({"THE24":["NC24", "SM24"], "DEL":["JAW"]})
 
     # Test the stored dictionary dictionary
-    assert Long_Test.report_combination == {"ANY24":["NC24", "DP24", "SM24"], "ANY":["NC24", "DP24", "SM24", "JAW"], "THE24":["NC24", "SM24"]}
+    assert Long_Test.report_combination == {"ANY24":["NC24", "DP24", "SM24"], "ANY":["NC24", "DP24", "SM24", "JAW"], "THE24":["NC24", "SM24"], "DEL":["JAW"]}
 
+# Ensure remove endpoints works as expected
+def test_remove_endpoints():
+
+    # Endpoint must be in the dataset
+    with pytest.raises(Exception, match = "CATS is not an endpoint in the DataClass object."):
+        Long_Test.remove_endpoints("CATS")
+
+    # Remove endpoint
+    Long_Test.remove_endpoints(["DNC", "THE24"])
+
+    # Remove more endpoints
+    Long_Test.remove_endpoints(["DEL"])
+
+    # Test the stored removed endpoints 
+    assert Long_Test.report_endpoint_removal == ["DNC", "THE24", "DEL"]
     
 

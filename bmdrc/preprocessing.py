@@ -158,7 +158,7 @@ def remove_endpoints(self, endpoint_name):
     # Iterate through each endpoint to confirm it is a valid choice 
     for endpoint in endpoint_name:
         if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
-            raise Exception(endpoint + " is not in an endpoint in the DataClass object")
+            raise Exception(endpoint + " is not an endpoint in the DataClass object.")
         
     ######################
     ## REMOVE ENDPOINTS ##
