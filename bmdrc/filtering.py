@@ -133,7 +133,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
     ###############################
 
     # Extract negative controls 
-    NegControls = self.plate_groups[self.plate_groups[self.concentration] == 0]
+    NegControls = self.plate_groups[self.plate_groups[self.concentration] == 0].copy()
 
     # Calculate responses in negative controls
     NegControlRes = pd.DataFrame((NegControls["bmdrc.num.affected"] / NegControls["bmdrc.num.nonna"])).value_counts().rename_axis("Response").reset_index().rename(columns = {"count":"Count"}).sort_values(by = ["Response"]).reset_index(drop=True)
