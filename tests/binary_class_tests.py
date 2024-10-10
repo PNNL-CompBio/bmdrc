@@ -41,6 +41,9 @@ def test_wide_BinaryClass():
     )
     assert isinstance(WideTest, bmdrc.BinaryClass.BinaryClass)
     assert (WideTest.df.columns == ['chemical.id', 'conc', 'plate.id', 'well', 'endpoint', 'value']).all()
+
+    # Run a quick check for plate groups
+    WideTest.make_plate_groups()
     
 # Test wrong inputs for data.frame 
 def test_df():

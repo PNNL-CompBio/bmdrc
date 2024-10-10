@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 import pytest
-from bmdrc import BinaryClass
+from bmdrc import BinaryClass, LPRClass
 
 ## How to calculate coverage (from within main package directory): 
 # coverage run --source=bmdrc -m pytest -x tests/*
@@ -92,3 +92,27 @@ def test_gen_response_curve():
     Long_Test.response_curve(chemical_name = 2, endpoint_name = "JAW", model = "log probit")
     Long_Test.response_curve(chemical_name = 2, endpoint_name = "JAW", model = "multistage2")
     Long_Test.response_curve(chemical_name = 2, endpoint_name = "JAW", model = "quantal linear")
+
+# Test output module
+def test_outputs():
+    
+    # Output benchmark doses
+    Long_Test.output_benchmark_dose()
+
+    # Output reports
+    Long_Test.report(out_folder = "./long_report_delete")
+
+    # Build a report for data that underwent no processing
+    Quick_Test = LPRClass.LPRClass(
+        df = pd.read_csv("data/LPR_Long.csv"),
+        chemical = "chemical.id",
+        plate = "plate.id",
+        well = "well",
+        concentration = "conc",
+        time = "variable",
+        value = "value",
+        cycle_length = 20.0,
+        cycle_cooldown = 10.0, 
+        starting_cycle = "light"
+    )
+    Quick_Test.report(out_folder = "./lpr_report_delete")

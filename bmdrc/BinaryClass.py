@@ -78,8 +78,6 @@ class DataClass(object):
     def report(self, out_folder, report_name = "Benchmark Dose Curves"):
         report_binary(self, out_folder, report_name)
 
-
-
 class BinaryClass(DataClass):
     '''
     Generates a binary class object where input values are either a 0, 1, or NA.

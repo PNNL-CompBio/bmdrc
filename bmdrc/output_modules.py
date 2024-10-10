@@ -1,23 +1,12 @@
 import numpy as np
 import pandas as pd
 from astropy import stats as astrostats
+from bmdrc import filtering 
 import os
 
 __author__ = "David Degnan"
 
 def benchmark_dose(self, path):
-    
-    def BMD_Range_Flag(id, BMD):
-        
-        # Get concentrations
-        concs = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == id][self.concentration]
-
-        if (np.isnan(BMD)):
-            return(np.nan)
-        elif (BMD <= max(concs) and BMD >= min(concs)):
-            return(0)
-        else:
-            return(1)
         
     # Pull BMDS. Flag of 0 is bad, and flag of 1 is good. 
     BMDS = self.bmds
@@ -103,7 +92,7 @@ def report_binary(self, out_folder, report_name):
 
         out_string = out_string + "New endpoints were made using existing endpoints using 'or', which means that" + \
         " if there is any endpoints with a '1', this new endpoint will also have a '1', regardless of" + \
-       " how many zeroes there are in the other endpoints. See a summary table of added endpoints below:\n\n"
+        " how many zeroes there are in the other endpoints. See a summary table of added endpoints below:\n\n"
         
         the_combined = "|New Endpoint Name|Combined Existing Endpoints|\n|---|---|\n"
         for key in self.report_combination:
@@ -262,50 +251,56 @@ def report_binary(self, out_folder, report_name):
     ## MODEL FITTING ##
     ###################
         
-    # Filter Summary-------------------------------------------------------------------------------------
+    try:
+    
+        # Filter Summary-------------------------------------------------------------------------------------
+            
+        # Get removal and kept counts 
+        removed = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"]["bmdrc.Endpoint.ID"]))
+        kept = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]["bmdrc.Endpoint.ID"]))       
+        total = removed + kept
+
+        out_string = out_string + "Overall, " + str(total) + " endpoint and chemical combinations were considered. " + str(kept) + \
+                    " were deemed eligible for modeling, and " + str(removed) + " were not based on filtering selections explained" + \
+                    " in the previous section.\n\n#### **Model Fitting Selections**\n\n"
         
-    # Get removal and kept counts 
-    removed = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"]["bmdrc.Endpoint.ID"]))
-    kept = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]["bmdrc.Endpoint.ID"]))       
-    total = removed + kept
+        # Model Fitting Selections------------------------------------------------------------------------------
 
-    out_string = out_string + "Overall, " + str(total) + " endpoint and chemical combinations were considered. " + str(kept) + \
-                 " were deemed eligible for modeling, and " + str(removed) + " were not based on filtering selections explained" + \
-                 " in the previous section.\n\n#### **Model Fitting Selections**\n\n"
-    
-    # Model Fitting Selections------------------------------------------------------------------------------
+        out_string = out_string + "The following model fitting parameters were selected.\n\n|Parameter|Value|Parameter Description|\n" + \
+                    "|---|---|---|\n|Goodness of Fit Threshold|" + str(self.model_fitting_gof_threshold) + "|Minimum p-value for fitting a model. Default is 0.1|\n" + \
+                    "|Akaike Information Criterion (AIC) Threshold|" + str(self.model_fitting_aic_threshold) + "|Any models with an AIC within this value are considered" + \
+                    " an equitable fit. Default is 2.\n" + \
+                    "|Model Selection|" + self.model_fitting_model_selection + "|Either return one model with the lowest BMDL, or combine equivalent fits|\n\n#### **Model Quality Summary**\n\n"
+        
+        # Model Quality Summary---------------------------------------------------------------------------------
 
-    out_string = out_string + "The following model fitting parameters were selected.\n\n|Parameter|Value|Parameter Description|\n" + \
-                 "|---|---|---|\n|Goodness of Fit Threshold|" + str(self.model_fitting_gof_threshold) + "|Minimum p-value for fitting a model. Default is 0.1|\n" + \
-                 "|Akaike Information Criterion (AIC) Threshold|" + str(self.model_fitting_aic_threshold) + "|Any models with an AIC within this value are considered" + \
-                 " an equitable fit. Default is 2.\n" + \
-                 "|Model Selection|" + self.model_fitting_model_selection + "|Either return one model with the lowest BMDL, or combine equivalent fits|\n\n#### **Model Quality Summary**\n\n"
-    
-    # Model Quality Summary---------------------------------------------------------------------------------
+        out_string = out_string + "Below is a summary table of the number of endpoints with a high quality fit (a flag of 1, meaning that" + \
+                    " the BMD10 value is within the range of measured doses) and those that are not high quality (a flag of 0).\n\n"
 
-    out_string = out_string + "Below is a summary table of the number of endpoints with a high quality fit (a flag of 1, meaning that" + \
-                 " the BMD10 value is within the range of measured doses) and those that are not high quality (a flag of 0).\n\n"
+        # Make dataframe of flag counts, adding any missing flags
+        dataqc_table = self.bmds[["Model", "DataQC_Flag"]].groupby("DataQC_Flag").count().reset_index().rename({"Model":"Count"}, axis = 1)
+        if ((0 in dataqc_table["DataQC_Flag"].values.tolist()) == False):
+            dataqc_table = pd.concat([dataqc_table, pd.DataFrame({"DataQC_Flag":[0], "Count":[0]})])
+        if ((1 in dataqc_table["DataQC_Flag"].values.tolist()) == False):
+            dataqc_table = pd.concat([dataqc_table, pd.DataFrame({"DataQC_Flag":[1], "Count":[0]})])
 
-    # Make dataframe of flag counts, adding any missing flags
-    dataqc_table = self.bmds[["Model", "DataQC_Flag"]].groupby("DataQC_Flag").count().reset_index().rename({"Model":"Count"}, axis = 1)
-    if ((0 in dataqc_table["DataQC_Flag"].values.tolist()) == False):
-        dataqc_table = pd.concat([dataqc_table, pd.DataFrame({"DataQC_Flag":[0], "Count":[0]})])
-    if ((1 in dataqc_table["DataQC_Flag"].values.tolist()) == False):
-        dataqc_table = pd.concat([dataqc_table, pd.DataFrame({"DataQC_Flag":[1], "Count":[0]})])
+        # Add flag counts 
+        out_string = out_string + "|Flag|Count|\n|---|---|\n|0|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 0]["Count"].values[0]) + "|\n" + \
+                    "|1|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 1]["Count"].values[0]) + "|\n\n#### **Output Modules**\n\nBelow, see a table of" + \
+                    " useful methods for extracting outputs from bmdrc.\n\n"
+        
+        # Add useful parameters 
+        out_string = out_string + "|Method|Description|\n|---|---|\n|.bmds|Table of fitted benchmark dose values|\n" + \
+                    "|.bmds_filtered|Table of filtered models not eligible for benchmark dose calculations|\n" + \
+                    "|.output_res_benchmark_dose|Table of benchmark doses for all models, regardless of whether they were filtered or not|\n" + \
+                    "|.p_value_df|Table of goodness of fit p-values for every eligible endpoint|\n" + \
+                    "|.aic_df|Table of Akaike Information Criterion values for every eligible endpoint|\n" + \
+                    "|.response_curve|Plot a benchmark dose curve for an endpoint|\n\n"
+        
+    except:
 
-    # Add flag counts 
-    out_string = out_string + "|Flag|Count|\n|---|---|\n|0|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 0]["Count"].values[0]) + "|\n" + \
-                "|1|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 1]["Count"].values[0]) + "|\n\n#### **Output Modules**\n\nBelow, see a table of" + \
-                " useful methods for extracting outputs from bmdrc.\n\n"
-    
-    # Add useful parameters 
-    out_string = out_string + "|Method|Description|\n|---|---|\n|.bmds|Table of fitted benchmark dose values|\n" + \
-                 "|.bmds_filtered|Table of filtered models not eligible for benchmark dose calculations|\n" + \
-                 "|.output_res_benchmark_dose|Table of benchmark doses for all models, regardless of whether they were filtered or not|\n" + \
-                 "|.p_value_df|Table of goodness of fit p-values for every eligible endpoint|\n" + \
-                 "|.aic_df|Table of Akaike Information Criterion values for every eligible endpoint|\n" + \
-                 "|.response_curve|Plot a benchmark dose curve for an endpoint|\n\n"
-
+        out_string = out_string + "Model fits were not conducted."
+        
     file = open(out_folder + "/" + report_name + ".md", "w")
     file.write(out_string)
     file.close()

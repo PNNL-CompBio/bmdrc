@@ -951,12 +951,6 @@ def calc_fit_statistics(self):
     # Pull the AIC data.frame 
     aic_df = pd.DataFrame(aic_list)
 
-    # Write function to identify the lowest AIC per row
-    def min_aic(sr):
-        name = sr.idxmin()
-        value = sr[name]
-        return pd.Series([value, name])
-
     # Save AIC df 
     self.aic_df = aic_df
 
