@@ -681,7 +681,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
             ChiSquared = ((NonNATotals / (PredictedValues * (1 - PredictedValues))) * (ExperimentalValues - PredictedValues)**2).sum()
 
             # Calculate a p-value of fit
-            p_val = 1 - stats.chi2.sf(ChiSquared, len(NonNATotals) - len(Params)) 
+            p_val = stats.chi2.sf(ChiSquared, len(NonNATotals) - len(Params)) 
             if (p_val == 0): 
                 p_val = np.nan
 
