@@ -43,14 +43,12 @@ A sample for the generated report for light photomotor response data can be foun
 
 # Test function coverage using coverage.py
 
-Name                      Stmts   Miss  Cover
----------------------------------------------
-bmdrc/BinaryClass.py        138      0   100%
-bmdrc/LPRClass.py           211      0   100%
-bmdrc/__init__.py             0      0   100%
-bmdrc/filtering.py          146      0   100%
-bmdrc/model_fitting.py      687      5    99%
-bmdrc/output_modules.py     125      2    98%
-bmdrc/preprocessing.py       59      0   100%
----------------------------------------------
-TOTAL                      1366      7    99%
+| Name                      | Stmts  | Miss | Cover |
+|---------------------------|--------|------|-------|
+| bmdrc/BinaryClass.py      |  138   |   0  | 100%  |
+| bmdrc/LPRClass.py         |  211   |   0  | 100%  |
+| bmdrc/filtering.py        |  146   |   0  | 100%  |
+| bmdrc/model_fitting.py    |  687   |   5  |  99%  |
+| bmdrc/output_modules.py   |  125   |   2  |  98%  |
+| bmdrc/preprocessing.py    |   59   |   0  | 100%  |
+| **TOTAL**                 | **1366**|**7**|**99%**|
