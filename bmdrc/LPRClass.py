@@ -40,14 +40,11 @@ class LPRClass(DataClass):
     starting_cycle: (string) either "light" or "dark" depending on whether
     the first measurement was a light or dark cycle. Default is "light". 
 
-    samples_to_remove: (string) list of strings with plate and well ids to remove, written
-    as "plate.id & well". For example if plate 2 and well H01 was to be removed, it should
-    be written as "2 & H01"  # TO Update
     '''
 
     # Define the input checking functions. Include raw and transformed data.frames 
     def __init__(self, df, chemical, plate, well, concentration, time, value, cycle_length = 20.0, 
-                 cycle_cooldown = 10.0, starting_cycle = "light", samples_to_remove = None):
+                 cycle_cooldown = 10.0, starting_cycle = "light"):
         self.df = df
         self.chemical = chemical
         self.plate = plate
@@ -58,7 +55,6 @@ class LPRClass(DataClass):
         self.cycle_length = cycle_length
         self.cycle_cooldown = cycle_cooldown
         self.starting_cycle = starting_cycle
-        self.samples_to_remove = samples_to_remove
         self.convert_LPR()
 
 
@@ -73,7 +69,6 @@ class LPRClass(DataClass):
     cycle_length = property(operator.attrgetter('_cycle_length'))
     cycle_cooldown = property(operator.attrgetter('_cycle_cooldown'))
     starting_cycle = property(operator.attrgetter('_starting_cycle'))
-    samples_to_remove = property(operator.attrgetter('_samples_to_remove'))
     cycles = property(operator.attrgetter('_cycle'))
     unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
                     "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
@@ -85,61 +80,49 @@ class LPRClass(DataClass):
 
     @df.setter
     def df(self, theDF):
+        if not isinstance(theDF, pd.DataFrame):
+            raise Exception("df must be a pandas DataFrame.")
         if theDF.empty:
             raise Exception("df cannot be empty. Please provide a pandas DataFrame.")
-        if not isinstance(theDF, pd.DataFrame):
-            raise Exception("df must be a pandas DataFrame")
         self._ori_df = theDF
         self._df = theDF
 
     @chemical.setter
     def chemical(self, chemicalname):
-        if not chemicalname: 
-           raise Exception("chemical cannot be empty. Please enter the column name for \
-                            the chemicals.")
         if not isinstance(chemicalname, str):
             raise Exception("chemical must be a name of a column in df.")
         if not chemicalname in self._df.columns:
-            raise Exception(chemicalname + " is not in the column names of df")
+            raise Exception(chemicalname + " is not in the column names of df.")
         if chemicalname in self.unacceptable:
             raise Exception(chemicalname + " is not a permitted name. Please rename this column.")
         self._chemical = chemicalname
 
     @plate.setter
     def plate(self, platename):
-        if not platename: 
-           raise Exception("plate cannot be empty. Please enter the column name for \
-                            the plate ids.")
         if not isinstance(platename, str):
             raise Exception("plate must be a name of a column in df.")
         if not platename in self._df.columns:
-            raise Exception(platename + " is not in the column names of df")
+            raise Exception(platename + " is not in the column names of df.")
         if platename in self.unacceptable:
             raise Exception(platename + " is not a permitted name. Please rename this column.")
         self._plate = platename
         
     @well.setter
     def well(self, wellname):
-        if not wellname: 
-           raise Exception("well cannot be empty. Please enter the column name for \
-                            the well ids.")
         if not isinstance(wellname, str):
             raise Exception("well must be a name of a column in df.")
         if not wellname in self._df.columns:
-            raise Exception(wellname + " is not in the column names of df")
+            raise Exception(wellname + " is not in the column names of df.")
         if wellname in self.unacceptable:
             raise Exception(wellname + " is not a permitted name. Please rename this column.")
         self._well = wellname
         
     @concentration.setter
     def concentration(self, concentrationname):
-        if not concentrationname: 
-           raise Exception("concentration cannot be empty. Please enter the column name for \
-                            the concentration.")
         if not isinstance(concentrationname, str):
             raise Exception("concentration must be a name of a column in df.")
         if not concentrationname in self._df.columns:
-            raise Exception(concentrationname + " is not in the column names of df")
+            raise Exception(concentrationname + " is not in the column names of df.")
         if concentrationname in self.unacceptable:
             raise Exception(concentrationname + " is not a permitted name. Please rename this column.")
         self._df[concentrationname] = pd.to_numeric(self._df[concentrationname])
@@ -147,13 +130,10 @@ class LPRClass(DataClass):
 
     @time.setter
     def time(self, timename):
-        if not timename: 
-           raise Exception("time cannot be empty. Please enter the column name for \
-                            the time.")
         if not isinstance(timename, str):
             raise Exception("time must be a name of a column in df.")
         if not timename in self._df.columns:
-            raise Exception(timename + " is not in the column names of df")
+            raise Exception(timename + " is not in the column names of df.")
         if timename in self.unacceptable:
             raise Exception(timename + " is not a permitted name. Please rename this column.")
         self._df[timename] = self._df[timename].str.extract('(\d+)', expand=False).astype(float)
@@ -161,13 +141,10 @@ class LPRClass(DataClass):
 
     @value.setter
     def value(self, valuename):
-        if not valuename: 
-            raise Exception("value cannot be empty. Please enter the column name for \
-                                the value.")
         if not isinstance(valuename, str):
             raise Exception("value must be a name of a column in df.")
         if not valuename in self._df.columns:
-            raise Exception(valuename + " is not in the column names of df")
+            raise Exception(valuename + " is not in the column names of df.")
         if valuename in self.unacceptable:
             raise Exception(valuename + " is not a permitted name. Please rename this column.")
         self._df[valuename] = self._df[valuename].astype(float)
@@ -175,33 +152,21 @@ class LPRClass(DataClass):
 
     @cycle_length.setter
     def cycle_length(self, cycle_length):
-        if not cycle_length:
-            raise Exception("a cycle_length value must be set.")
         if not isinstance(cycle_length, float):
-            raise Exception("cycle_length should be a float")
+            raise Exception("cycle_length should be a float.")
         self._cycle_length = cycle_length
 
     @cycle_cooldown.setter
     def cycle_cooldown(self, cycle_cooldown):
-        if not cycle_cooldown:
-            raise Exception("a cycle_cooldown value must be set.")
         if not isinstance(cycle_cooldown, float):
-            raise Exception("cycle_length should be a float")
+            raise Exception("cycle_cooldown should be a float.")
         self._cycle_cooldown = cycle_cooldown
 
     @starting_cycle.setter
     def starting_cycle(self, starting_cycle):
-        if not starting_cycle:
-            raise Exception("starting_cycle must be either 'light' or 'dark'.")
         if not starting_cycle in ['light', 'dark']:
             raise Exception("starting_cycle must be either 'light' or 'dark'.")
         self._starting_cycle = starting_cycle
-
-    @samples_to_remove.setter
-    def samples_to_remove(self, samples_to_remove):
-        if samples_to_remove:
-            self._df = self._df[~(self._df["well"].isin(samples_to_remove))]
-            self._samples_to_remove = samples_to_remove
 
     # LPR-specific function: determines light and dark cycles
     def add_cycles(self):
@@ -409,23 +374,3 @@ class LPRClass(DataClass):
         self._endpoint = "endpoint"
         self.value = "value"
         self._value = "value"
-
-
-
-        
-
-    
-
-
-
-
-
-
-
-    
-
-
-
-
-    
-

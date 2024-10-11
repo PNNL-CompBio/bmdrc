@@ -141,7 +141,7 @@ class BinaryClass(DataClass):
     @df.setter
     def df(self, theDF):
         if not isinstance(theDF, pd.DataFrame):
-            raise Exception("df must be a pandas DataFrame")
+            raise Exception("df must be a pandas DataFrame.")
         if theDF.empty:
             raise Exception("df cannot be empty. Please provide a pandas DataFrame.")
         self._df = theDF

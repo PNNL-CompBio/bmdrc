@@ -49,7 +49,7 @@ def test_wide_BinaryClass():
 def test_df():
 
     # The df must be a pandas DataFrame, no exceptions
-    with pytest.raises(Exception, match = "df must be a pandas DataFrame"):
+    with pytest.raises(Exception, match = "df must be a pandas DataFrame."):
         BinaryClass.BinaryClass(
             df = "celery",
             chemical = "chemical.id", 
