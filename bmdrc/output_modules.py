@@ -36,7 +36,30 @@ def benchmark_dose(self, path):
     # Arrange by analysis flag
     BMDS_Final = BMDS_Final.sort_values("BMD_Analysis_Flag", ascending = False)
     
+    # Save output table
     self.output_res_benchmark_dose = BMDS_Final
+
+    # Write file if path is not none
+    if path is not None:
+        BMDS_Final.to_csv(path, header = True, index = False)
+
+def dose_table(self, path):
+
+    # Extract the specific dosages that were measured with their additional information
+    dose_table = self.plate_groups[[self.chemical, self.endpoint, self.concentration, "bmdrc.num.affected", \
+                                    "bmdrc.num.nonna", "bmdrc.Endpoint.ID", "Low", "High"]]
+
+    # Rename columns
+    dose_table = dose_table.rename({self.chemical:"Chemical_ID", self.endpoint:"End_Point", self.concentration:"Dose", \
+                                    "bmdrc.num.affected":"num.affected", "bmdrc.num.nonna":"num.nonna", \
+                                    "bmdrc.Endpoint.ID":"ids", "Low":"CI_Lo", "High":"CI_Hi"}, axis = 1)
+    
+    # Save output table
+    self.output_res_dose_table = dose_table
+
+    # Write file if path is not none
+    if path is not None:
+        dose_table.to_csv(path, header = True, index = False)
 
 def report_binary(self, out_folder, report_name):
 
