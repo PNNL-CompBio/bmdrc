@@ -227,13 +227,15 @@ class BinaryClass(DataClass):
                 raise Exception(valuename + " is not in the column names of df.")
             if valuename in self.unacceptable:
                 raise Exception(valuename + " is not a permitted name. Please rename this column.")
-            if not set(self._df[valuename]) == {0, 1}:
-                raise Exception("The value column must be comprised of only zeroes and ones.")
+            
+            # Save the unique values in this list
+            theValues = self._df[valuename].unique().tolist()
+
+            # Remove NAs (these are acceptable)
+            theValues = [int(val) for val in theValues if np.isnan(val) == False]
+
+            if not set(theValues) == {0, 1}:
+                raise Exception("The value column must be comprised of only zeroes, ones, and NA values.")
             self._value = valuename
         else:
             self._value = "value"
-
-    
-
-
-    
