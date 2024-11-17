@@ -619,7 +619,7 @@ def removed_endpoints_stats(self):
         self.bmds_filtered = None
 
 
-def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
+def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode):
     '''
     Accessory function to fit_the_models. 
     This function fits all non-filtered endpoints to the EPA recommended 
@@ -657,6 +657,9 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
     model_results = {}
 
     for endpoint in to_fit:
+
+        if (diagnostic_mode):
+            print("......fitting models for " + endpoint)
 
         # Subset to endpoint
         sub_data = dose_response[dose_response["bmdrc.Endpoint.ID"] == endpoint]
@@ -740,7 +743,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection):
             "Probit": run_regression_model(sub_data, Probit, probit_fun, "Probit"),
 
             ## Log-Probit ##
-            "Log Probit": run_regression_model(sub_data, Log_Probit, log_probit_fun, "Log Probit"),
+            #"Log Probit": run_regression_model(sub_data, Log_Probit, log_probit_fun, "Log Probit"),
 
             ## Multistage ##
             "Multistage2": run_regression_model(sub_data, Multistage_2, multistage_2_fun, "Multistage2"),
@@ -1017,7 +1020,7 @@ def calc_fit_statistics(self):
     self.bmds = pd.DataFrame(BMDS_Model)
 
 
-def fit_the_models(self, gof_threshold, aic_threshold, model_selection):
+def fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode):
     '''
     Fit the EPA recommended models to your dataset. 
 
@@ -1070,7 +1073,7 @@ def fit_the_models(self, gof_threshold, aic_threshold, model_selection):
     removed_endpoints_stats(self)
 
     # 2. Fit models for endpoints that are not filtered out
-    select_and_run_models(self, gof_threshold, aic_threshold, model_selection)
+    select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode)
 
     # 3. Calculate statistics
     calc_fit_statistics(self)
