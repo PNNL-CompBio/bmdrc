@@ -634,19 +634,6 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, d
     # Add fraction affected to plate groups 
     self.plate_groups["bmdrc.frac.affected"] = self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]
 
-    # Initialize Low and High columns
-    self.plate_groups["Low"] = np.nan
-    self.plate_groups["High"] = np.nan
-
-    # Add confidence intervals 
-    for row in range(len(self.plate_groups)):
-        NumAffected = self.plate_groups["bmdrc.num.affected"][row]
-        NumNonNa = self.plate_groups["bmdrc.num.nonna"][row]
-        if NumNonNa != 0:
-            CI = astrostats.binom_conf_interval(NumAffected, NumNonNa, confidence_level = 0.95)
-            self.plate_groups["Low"][row] = np.round(CI[0], 8) 
-            self.plate_groups["High"][row] = np.round(CI[1], 8) 
-
     # Pull dose_response
     dose_response = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]
 
@@ -743,7 +730,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, d
             "Probit": run_regression_model(sub_data, Probit, probit_fun, "Probit"),
 
             ## Log-Probit ##
-            #"Log Probit": run_regression_model(sub_data, Log_Probit, log_probit_fun, "Log Probit"),
+            "Log Probit": run_regression_model(sub_data, Log_Probit, log_probit_fun, "Log Probit"),
 
             ## Multistage ##
             "Multistage2": run_regression_model(sub_data, Multistage_2, multistage_2_fun, "Multistage2"),
@@ -887,24 +874,45 @@ def Calculate_BMDL(conc_variable, Model, FittedModelObj, Data, BMD10, params, Ma
 
         # Select the correct BMD model
         if (Model == "Logistic"):
-            ModelObj = Logistic_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
+            try:
+                ModelObj = Logistic_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
+            except:
+                return(np.nan)
         elif (Model == "Gamma"):
-            ModelObj = Gamma_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            try:
+                ModelObj = Gamma_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            except: 
+                return(np.nan)
         elif (Model == "Weibull"):
-            ModelObj = Weibull_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            try:
+                ModelObj = Weibull_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            except:
+                return(np.nan)
         elif (Model == "Log Logistic"):
             try:
                 ModelObj = Log_Logistic_BMD(Data).profile_ll_fit([params[0], params[2], BMDL]) # Value is g and beta
             except:
                 return(np.nan)
         elif (Model == "Probit"):
-            ModelObj = Probit_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
+            try:
+                ModelObj = Probit_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is alpha
+            except: 
+                return(np.nan)
         elif (Model == "Log Probit"):
-            ModelObj = Log_Probit_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            try:
+                ModelObj = Log_Probit_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and alpha
+            except:
+                return(np.nan)
         elif (Model == "Multistage2"):
-            ModelObj = Multistage_2_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and beta 1
+            try:
+                ModelObj = Multistage_2_BMD(Data).profile_ll_fit([params[0], params[1], BMDL]) # Value is g and beta 1
+            except: 
+                return(np.nan)
         elif (Model == "Quantal Linear"):
-            ModelObj = Quantal_Linear_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is g
+            try:
+                ModelObj = Quantal_Linear_BMD(Data).profile_ll_fit([params[0], BMDL]) # Value is g
+            except:
+                return(np.nan)
         else:
             print(Model, "was not recognized as an acceptable model choice.")
 
@@ -1308,4 +1316,4 @@ def fits_table(self, path):
     self.output_res_fits_table = Fits_Final
 
     if path is not None:
-        Fits_Final.to_csv(path)
+        Fits_Final.to_csv(path, header = True, index = False)

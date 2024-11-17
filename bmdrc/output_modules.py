@@ -47,7 +47,23 @@ def dose_table(self, path):
 
     # Extract the specific dosages that were measured with their additional information
     dose_table = self.plate_groups[[self.chemical, self.endpoint, self.concentration, "bmdrc.num.affected", \
-                                    "bmdrc.num.nonna", "bmdrc.Endpoint.ID", "Low", "High"]]
+                                    "bmdrc.num.nonna", "bmdrc.Endpoint.ID"]]
+    
+    # Add up values 
+    dose_table = dose_table.groupby([self.chemical, self.endpoint, self.concentration, "bmdrc.Endpoint.ID"]).sum().reset_index()
+
+    # Add 95% confidence intervals
+    dose_table["Low"] = np.nan
+    dose_table["High"] = np.nan
+
+    # Add confidence intervals 
+    for row in range(len(dose_table)):
+        NumAffected = dose_table["bmdrc.num.affected"][row]
+        NumNonNa = dose_table["bmdrc.num.nonna"][row]
+        if NumNonNa != 0:
+            CI = astrostats.binom_conf_interval(NumAffected, NumNonNa, confidence_level = 0.95)
+            dose_table["Low"][row] = np.round(CI[0], 8) 
+            dose_table["High"][row] = np.round(CI[1], 8) 
 
     # Rename columns
     dose_table = dose_table.rename({self.chemical:"Chemical_ID", self.endpoint:"End_Point", self.concentration:"Dose", \
