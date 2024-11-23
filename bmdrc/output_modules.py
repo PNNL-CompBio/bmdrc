@@ -11,11 +11,16 @@ def benchmark_dose(self, path):
     # Pull BMDS. Flag of 0 is bad, and flag of 1 is good. 
     BMDS = self.bmds
     BMDS["DataQC_Flag"] = 1
-    BMDS_Filtered = self.bmds_filtered
-    BMDS_Filtered["DataQC_Flag"] = 0
 
-    # Start final BMDS data frame 
-    BMDS_Final = pd.concat([BMDS, BMDS_Filtered])
+    if self.bmds_filtered is not None:
+        BMDS_Filtered = self.bmds_filtered
+        BMDS_Filtered["DataQC_Flag"] = 0
+
+        # Start final BMDS data frame 
+        BMDS_Final = pd.concat([BMDS, BMDS_Filtered])
+
+    else:
+        BMDS_Final = BMDS
 
     # Add BMD10 and BMD50 flags
     BMDS_Final["BMD10_Flag"] = 0
