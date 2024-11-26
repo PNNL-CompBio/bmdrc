@@ -1253,12 +1253,12 @@ def fits_table(self, path):
         
         # If the ID is not found in the model_results, then return blanks for x and y 
         if ((ID in self.model_fits) == False):
-            return({
+            return(pd.DataFrame({
                 "Chemical_ID": ID.split(" ")[0],
                 "End_Point": ID.split(" ")[1],
                 "X_vals": np.nan,
                 "Y_vals": np.nan
-            })
+            }, index=[0]))
 
         def gen_uneven_spacing(doses, int_steps = 10):
             '''Generates ten steps of points between measurements'''
@@ -1301,18 +1301,18 @@ def fits_table(self, path):
         elif (model == "Quantal Linear"):
             dose_y_vals = run_fitted_model(quantal_linear_fun)
 
-        return({
+        return(pd.DataFrame({
             "Chemical_ID": [ID.split(" ")[0]] * len(dose_x_vals),
             "End_Point": [ID.split(" ")[1]] * len(dose_x_vals),
             "X_vals": dose_x_vals,
             "Y_vals": np.round(dose_y_vals, 8)
-        })
+        }))
 
     Fits_List = []
     for ID in self.plate_groups["bmdrc.Endpoint.ID"].unique():
         Fits_List.append(calc_fits(ID))
 
-    Fits_Final = pd.DataFrame(Fits_List).explode(["Chemical_ID", "End_Point", "X_vals", "Y_vals"])
+    Fits_Final = pd.concat(Fits_List)
     self.output_res_fits_table = Fits_Final
 
     if path is not None:
