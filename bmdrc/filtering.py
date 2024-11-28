@@ -70,7 +70,7 @@ def negative_control_plot(neg_control_df):
 
     fig = plt.figure(figsize = (10, 5))
 
-    colors = {'Keep':'steelblue', 'Filter':'firebrick'}
+    colors = {'Keep':'steelblue', 'Remove':'firebrick'}
     color_choices = neg_control_df["Filter"].apply(lambda x: colors[x])
     labels = list(colors.keys())
     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
@@ -171,7 +171,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
         Plates = NegControls[NegControls["Response"] >= (percentage/100)]["bmdrc.Plate.ID"].tolist()
 
         # Apply filter
-        self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter"] = "Filter"
+        self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter"] = "Remove"
         self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter.reason"] =  \
             self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter.reason"] + " negative_control_filter"
 
