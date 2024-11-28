@@ -145,7 +145,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
     NegControlRes["Filter"] = "Keep"
 
     # Determine what values will be removed
-    NegControlRes.loc[NegControlRes["Response"] >= percentage, "Filter"] = "Filter"
+    NegControlRes.loc[NegControlRes["Response"] >= percentage, "Filter"] = "Remove"
 
     # Always make the backend data frame 
     self.filter_negative_control_df = NegControlRes
@@ -184,7 +184,7 @@ def min_concentration_plot(min_concentration_df):
 
     fig = plt.figure(figsize = (10, 5))
 
-    colors = {'Keep':'steelblue', 'Filter':'firebrick'}
+    colors = {'Keep':'steelblue', 'Remove':'firebrick'}
     color_choices = min_concentration_df["Filter"].apply(lambda x: colors[x])
     labels = list(colors.keys())
     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
@@ -204,7 +204,8 @@ def min_concentration_plot(min_concentration_df):
 
 def min_concentration(self, count, apply, diagnostic_plot): 
     '''
-    Filter to remove endpoints without enough concentration measurements.
+    Filter to remove endpoints without enough concentration measurements. This count does not include
+    the baseline/control measurement of a concentration of 0. 
 
     count: (integer) The minimum number of concentrations an endpoint and chemical combination
     needs. Default is 3. 
@@ -245,8 +246,11 @@ def min_concentration(self, count, apply, diagnostic_plot):
     ## CREATE DIAGNOSTIC SUMMARY ##
     ###############################
 
+    # Pull plate groups and remove all 0's 
+    PlateGroupsNonZero = self.plate_groups[self.plate_groups[self.concentration] != 0]
+
     # Get a count per concentration group
-    ConcCount = self.plate_groups.loc[self.plate_groups["bmdrc.filter"] == "Keep", ["bmdrc.Endpoint.ID", self.concentration]].groupby("bmdrc.Endpoint.ID").nunique().reset_index().rename(columns = {self.concentration:"NumConc"})
+    ConcCount = PlateGroupsNonZero.loc[PlateGroupsNonZero["bmdrc.filter"] == "Keep", ["bmdrc.Endpoint.ID", self.concentration]].groupby("bmdrc.Endpoint.ID").nunique().reset_index().rename(columns = {self.concentration:"NumConc"})
 
     # Get summary counts of counts
     ConcCountSum = ConcCount["NumConc"].value_counts().reset_index().rename(columns = {"count":"Count"}).sort_values(["NumConc"])
@@ -255,7 +259,7 @@ def min_concentration(self, count, apply, diagnostic_plot):
     ConcCountSum["Filter"] = "Keep"
 
     # Apply filter threshold
-    ConcCountSum.loc[ConcCountSum["NumConc"] < count, "Filter"] = "Filter"
+    ConcCountSum.loc[ConcCountSum["NumConc"] < count, "Filter"] = "Remove"
 
     # Add summary filter to object
     self.filter_min_concentration_df = ConcCountSum.sort_values("NumConc", ascending = False).reset_index(drop = True)
