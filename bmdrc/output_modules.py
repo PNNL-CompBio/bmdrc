@@ -12,9 +12,16 @@ def benchmark_dose(self, path):
     BMDS = self.bmds
     BMDS["DataQC_Flag"] = 1
 
+    # Add filtered data as needed
     if self.bmds_filtered is not None:
+
+        # Pull filtered information
         BMDS_Filtered = self.bmds_filtered
         BMDS_Filtered["DataQC_Flag"] = 0
+
+        # Remove endpoints whose models were already fit
+        the_ids = BMDS["bmdrc.Endpoint.ID"].unique()
+        BMDS_Filtered = BMDS_Filtered[BMDS_Filtered["bmdrc.Endpoint.ID"].isin(the_ids) == False]
 
         # Start final BMDS data frame 
         BMDS_Final = pd.concat([BMDS, BMDS_Filtered])
@@ -73,7 +80,7 @@ def dose_table(self, path):
     # Rename columns
     dose_table = dose_table.rename({self.chemical:"Chemical_ID", self.endpoint:"End_Point", self.concentration:"Dose", \
                                     "bmdrc.num.affected":"num.affected", "bmdrc.num.nonna":"num.nonna", \
-                                    "bmdrc.Endpoint.ID":"ids", "Low":"CI_Lo", "High":"CI_Hi"}, axis = 1)
+                                    "Low":"CI_Lo", "High":"CI_Hi"}, axis = 1)
     
     # Save output table
     self.output_res_dose_table = dose_table
@@ -299,8 +306,9 @@ def report_binary(self, out_folder, report_name):
     
         # Filter Summary-------------------------------------------------------------------------------------
             
-        # Get removal and kept counts 
-        removed = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"]["bmdrc.Endpoint.ID"]))
+        # Get removal and kept counts --> remove filtered options
+        ids_in_filtered = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]["bmdrc.Endpoint.ID"].unique()
+        removed = len(pd.unique(self.plate_groups[(self.plate_groups["bmdrc.filter"] == "Remove") & (self.plate_groups["bmdrc.Endpoint.ID"].isin(ids_in_filtered) == False)]["bmdrc.Endpoint.ID"]))
         kept = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]["bmdrc.Endpoint.ID"]))       
         total = removed + kept
 

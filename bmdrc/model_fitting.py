@@ -1313,6 +1313,7 @@ def fits_table(self, path):
         Fits_List.append(calc_fits(ID))
 
     Fits_Final = pd.concat(Fits_List)
+    Fits_Final["bmdrc.Endpoint.ID"] = Fits_Final["Chemical_ID"] + " " + Fits_Final["End_Point"]
     self.output_res_fits_table = Fits_Final
 
     if path is not None:
