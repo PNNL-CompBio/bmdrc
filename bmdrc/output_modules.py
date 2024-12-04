@@ -20,7 +20,7 @@ def benchmark_dose(self, path):
         BMDS_Filtered["DataQC_Flag"] = 0
 
         # Remove endpoints whose models were already fit
-        the_ids = BMDS["bmdrc.Endpoint.ID"].unique()
+        the_ids = BMDS["bmdrc.Endpoint.ID"].unique().tolist()
         BMDS_Filtered = BMDS_Filtered[BMDS_Filtered["bmdrc.Endpoint.ID"].isin(the_ids) == False]
 
         # Start final BMDS data frame 
@@ -28,6 +28,32 @@ def benchmark_dose(self, path):
 
     else:
         BMDS_Final = BMDS
+
+    # Add those that failed the p-value checks
+    if self.failed_pvalue_test is not None:
+
+        # Make a data frame with all endpoints that failed the p-value checks
+        pvalue_fails = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"].isin(self.failed_pvalue_test)]
+
+        # Calculate the fraction affected 
+        pvalue_fails["frac.affected"] = pvalue_fails["bmdrc.num.affected"] / pvalue_fails["bmdrc.num.nonna"]
+
+        # Group values by endpoint ID
+        pvalue_fails = pvalue_fails.groupby("bmdrc.Endpoint.ID")
+
+        # Calculate values 
+        pvalue_bmds = pvalue_fails.apply(lambda df: np.trapz(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
+        pvalue_bmds[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
+        pvalue_bmds["Min_Dose"] = round(pvalue_fails[["bmdrc.Endpoint.ID", self.concentration]].min(self.concentration).reset_index()[self.concentration], 4)
+        pvalue_bmds["Max_Dose"] = round(pvalue_fails[["bmdrc.Endpoint.ID", self.concentration]].max(self.concentration).reset_index()[self.concentration], 4)
+        pvalue_bmds["AUC_Norm"] = pvalue_bmds["AUC"] / (pvalue_bmds["Max_Dose"] - pvalue_bmds["Min_Dose"])
+
+        # Order the outputs correctly and add QC flag
+        pvalue_bmds = pvalue_bmds[["bmdrc.Endpoint.ID", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm"]]
+        pvalue_bmds["DataQC_Flag"] = 0
+
+        # Concatenate
+        BMDS_Final = pd.concat([BMDS_Final, pvalue_bmds])
 
     # Add BMD10 and BMD50 flags
     BMDS_Final["BMD10_Flag"] = 0
@@ -312,9 +338,13 @@ def report_binary(self, out_folder, report_name):
         kept = len(pd.unique(self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]["bmdrc.Endpoint.ID"]))       
         total = removed + kept
 
+        # Also count those failing to meet GOF
+        failed_p_val = len(self.failed_pvalue_test)
+
         out_string = out_string + "Overall, " + str(total) + " endpoint and chemical combinations were considered. " + str(kept) + \
                     " were deemed eligible for modeling, and " + str(removed) + " were not based on filtering selections explained" + \
-                    " in the previous section.\n\n#### **Model Fitting Selections**\n\n"
+                    " in the previous section. Of the " + str(kept) + " deemed eligible for modeling, " + str(failed_p_val) + " did not pass modeling checks." + \
+                    "\n\n#### **Model Fitting Selections**\n\n"
         
         # Model Fitting Selections------------------------------------------------------------------------------
 

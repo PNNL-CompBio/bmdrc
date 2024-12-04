@@ -695,7 +695,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, d
             model_pval = calc_p_value(model_fittedvals, model_params)
 
             # Get the AIC
-            AIC = -2*model.fit().llf + (2 * len(model_params))
+            AIC = -2 * model.fit().llf + (2 * len(model_params))
 
             # Get the BMD10
             BMD10 = Calculate_BMD(Model = modelname, params = model_params)
@@ -769,6 +769,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, d
                     self.failed_pvalue_test = [endpoint]
                 else:
                     self.failed_pvalue_test.append(endpoint)
+                    self.failed_pvalue_test = self.failed_pvalue_test.unique()
                 return True
 
         # Step One: Keep models within the goodness of fit threshold
