@@ -769,7 +769,7 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, d
                     self.failed_pvalue_test = [endpoint]
                 else:
                     self.failed_pvalue_test.append(endpoint)
-                    self.failed_pvalue_test = self.failed_pvalue_test.unique()
+                    self.failed_pvalue_test = list(set(self.failed_pvalue_test))
                 return True
 
         # Step One: Keep models within the goodness of fit threshold

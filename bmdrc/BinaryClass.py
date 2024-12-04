@@ -162,6 +162,12 @@ class BinaryClass(DataClass):
             raise Exception(chemicalname + " is not in the column names of df.")
         if chemicalname in self.unacceptable:
             raise Exception(chemicalname + " is not a permitted name. Please rename this column.")
+        
+        # Make this column a string
+        self._df[chemicalname] = self._df[chemicalname].astype(str)
+
+        if any([" " in x for x in self._df[chemicalname].unique()]):
+            raise Exception("spaces are not permitted in chemical names. Check this column in your dataframe.")
         self._chemical = chemicalname
 
     @plate.setter
@@ -172,6 +178,12 @@ class BinaryClass(DataClass):
             raise Exception(platename + " is not in the column names of df.")
         if platename in self.unacceptable:
             raise Exception(platename + " is not a permitted name. Please rename this column.")
+        
+        # Make this column a string
+        self._df[platename] = self._df[platename].astype(str)
+
+        if any([" " in x for x in self._df[platename].unique()]):
+            raise Exception("spaces are not permitted in plate names. Check this column in your dataframe.")
         self._plate = platename
         
     @well.setter
@@ -182,6 +194,12 @@ class BinaryClass(DataClass):
             raise Exception(wellname + " is not in the column names of df.")
         if wellname in self.unacceptable:
             raise Exception(wellname + " is not a permitted name. Please rename this column.")
+        
+        # Make this column a string
+        self._df[wellname] = self._df[wellname].astype(str)
+
+        if any([" " in x for x in self._df[wellname].unique()]):
+            raise Exception("spaces are not permitted in well names. Check this column in your dataframe.")
         self._well = wellname
         
     @concentration.setter
@@ -214,6 +232,12 @@ class BinaryClass(DataClass):
                 raise Exception(endpointname + " is not in the column names of df.")
             if endpointname in self.unacceptable:
                 raise Exception(endpointname + " is not a permitted name. Please rename this column.")
+            
+            # Make this column a string
+            self._df[endpointname] = self._df[endpointname].astype(str)
+
+            if any([" " in x for x in self._df[endpointname].unique()]):
+                raise Exception("spaces are not permitted in endpoint names. Check this column in your dataframe.")
             self._endpoint = endpointname
         else:
             self._endpoint = "endpoint"
