@@ -52,3 +52,7 @@ A sample for the generated report for light photomotor response data can be foun
 | bmdrc/output_modules.py   |  125   |   2  |  98%  |
 | bmdrc/preprocessing.py    |   59   |   0  | 100%  |
 | **TOTAL**                 | **1366**|**7**|**99%**|
+
+# Data Classes
+
+For datasets with plates and wells, use the `BinaryClass` object as it contains specific pre-processing and filtering functions that pertain to plates and well. Each value should be 0, 1, or NA, and `bmdrc` will calculate the response column. If your data does not contain plates and wells, use the `SimplifiedClass` object which only requires chemical, endpoint, concentration, and response information. The response must be between 0 and 1. If your data is light photomotor response use the `LPRClass` object. The continuous data will be transformed to dichotomous.

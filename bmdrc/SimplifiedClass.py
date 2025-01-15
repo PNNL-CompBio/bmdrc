@@ -1,18 +1,40 @@
 import operator
 import pandas as pd
-import numpy as np
 from abc import abstractmethod
 
+from .preprocessing import remove_endpoints
+from .filtering import min_concentration, correlation_score
 from .model_fitting import fit_the_models, gen_response_curve, fits_table
 from .output_modules import benchmark_dose, dose_table, report_binary
+
 __author__ = "David Degnan"
 
 
 class HalfClass(object):
     '''
     Class for fitting any data with a response from 0 to 1. 
-    Does not contain the pre-processing & filtering options of BinaryClass.
+    Does not contain all the pre-processing & filtering options of BinaryClass.
     '''
+
+    ############################
+    ## PRE-PROCESSING MODULES ##
+    ############################
+
+    @abstractmethod
+    def remove_endpoints(self, endpoint_name):
+        remove_endpoints(self, endpoint_name)
+
+    #######################
+    ## FILTERING MODULES ##
+    #######################
+
+    @abstractmethod
+    def filter_min_concentration(self, count = 3, apply = False, diagnostic_plot = False):
+        min_concentration(self, count, apply, diagnostic_plot)
+
+    @abstractmethod
+    def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False):
+        correlation_score(self, score, apply, diagnostic_plot)
 
     ###########################
     ## MODEL FITTING MODULES ##
@@ -46,7 +68,7 @@ class HalfClass(object):
     def report(self, out_folder, report_name = "Benchmark Dose Curves"):
         report_binary(self, out_folder, report_name)
 
-class ResponseOnlyClass(HalfClass):
+class SimplifiedClass(HalfClass):
     '''
     Class for fitting any data with a response from 0 to 1. 
     Does not contain the pre-processing & filtering options of BinaryClass.
@@ -75,6 +97,7 @@ class ResponseOnlyClass(HalfClass):
         self.concentration = concentration
         self.endpoint = endpoint
         self.response = response
+        self.plate = "plate"
         self.unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
                             "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
                             "bmdrc.frac.affected"]
@@ -99,6 +122,7 @@ class ResponseOnlyClass(HalfClass):
             raise Exception("df must be a pandas DataFrame.")
         if theDF.empty:
             raise Exception("df cannot be empty. Please provide a pandas DataFrame.")
+        theDF["plate"] = "NoPlate"
         self._df = theDF
 
     @chemical.setter
@@ -116,6 +140,22 @@ class ResponseOnlyClass(HalfClass):
         if any([" " in x for x in self._df[chemicalname].unique()]):
             raise Exception("spaces are not permitted in chemical names. Check this column in your dataframe.")
         self._chemical = chemicalname
+
+    @endpoint.setter
+    def endpoint(self, endpointname):
+        if not isinstance(endpointname, str):
+            raise Exception("endpoint must be a name of a column in df.")
+        if not endpointname in self._df.columns:
+            raise Exception(endpointname + " is not in the column names of df.")
+        if endpointname in self.unacceptable:
+            raise Exception(endpointname + " is not a permitted name. Please rename this column.")
+        
+        # Make this column a string
+        self._df[endpointname] = self._df[endpointname].astype(str)
+
+        if any([" " in x for x in self._df[endpointname].unique()]):
+            raise Exception("spaces are not permitted in endpoint names. Check this column in your dataframe.")
+        self._endpoint = endpointname
 
     @concentration.setter
     def concentration(self, concentrationname):
@@ -136,4 +176,9 @@ class ResponseOnlyClass(HalfClass):
             raise Exception(responsename + " is not in the column name of df.")
         if responsename in self.unacceptable:
             raise Exception(responsename + " is not a permitted name. Please rename this column.")
+        self._df[responsename] = pd.to_numeric(self._df[responsename])
+        if min(self._df[responsename]) < 0 or max(self._df[responsename]) > 1:
+            raise Exception("The response column must range in values from 0 to 1. Filter out NAs before using the SimplifiedClass.")
+        self._response = responsename
+        
 
