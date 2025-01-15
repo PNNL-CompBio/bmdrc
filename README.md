@@ -31,7 +31,7 @@ Or from github using:
 # How to use the package 
 
 ### Vignettes
-An example vignette for the dichotomous (binary) data is located [here](./vignettes/Binary%20Class%20Example.ipynb) and an example vignette for the light photomotor response data (continuous converted to dichotomous) is located [here](./vignettes/LPR%20Class%20Example.ipynb).
+An example vignette for the dichotomous (binary) data (when plate and well information is available) is located [here](./vignettes/Binary%20Class%20Example.ipynb) and an example vignette for when only chemical, endpoint, concentration, and response (ranging from 0-1) information is available is located [here](./vignettes/Simplified%20Class%20Example.ipynb). For the light photomotor response data (continuous converted to dichotomous), a vignette is located [here](./vignettes/LPR%20Class%20Example.ipynb).
  
 ### Example Data 
 Example data for dichotomous and light photomotor response data can be found [here](./data/).
