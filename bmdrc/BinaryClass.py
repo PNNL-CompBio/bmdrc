@@ -89,6 +89,7 @@ class DataClass(object):
 class BinaryClass(DataClass):
     '''
     Generates a binary class object where input values are either a 0, 1, or NA.
+    Used with zebrafish assays. For a more generic class, use ResponseOnlyClass().
 
     df: (pandas DataFrame) A dataframe containing columns title chemical, 
     plate, well, concentration, endpoint (long format only), value (long format only).
@@ -127,7 +128,9 @@ class BinaryClass(DataClass):
         self.format = format
         self.endpoint = endpoint
         self.value = value
-        self.unacceptable = ["bmdrc.Well.ID"]
+        self.unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
+                            "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
+                            "bmdrc.frac.affected"]
 
     # Set property returning functions 
     df = property(operator.attrgetter('_df'))
