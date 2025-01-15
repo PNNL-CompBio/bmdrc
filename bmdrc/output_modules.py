@@ -30,7 +30,7 @@ def benchmark_dose(self, path):
         BMDS_Final = BMDS
 
     # Add those that failed the p-value checks
-    if self.failed_pvalue_test is not None:
+    if hasattr(self, "failed_pvalue_test"):
 
         # Make a data frame with all endpoints that failed the p-value checks
         pvalue_fails = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"].isin(self.failed_pvalue_test)]

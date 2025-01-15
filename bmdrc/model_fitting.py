@@ -599,7 +599,10 @@ def removed_endpoints_stats(self):
         low_quality = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"]
 
         # Calculate the fraction affected 
-        low_quality["frac.affected"] = low_quality["bmdrc.num.affected"] / low_quality["bmdrc.num.nonna"]
+        if hasattr(self, "value"):
+            low_quality["frac.affected"] = low_quality["bmdrc.num.affected"] / low_quality["bmdrc.num.nonna"]
+        else:
+            low_quality["frac.affected"] = low_quality[self.response]
 
         # Group values by endpoint ID
         low_quality = low_quality.groupby("bmdrc.Endpoint.ID")
@@ -632,7 +635,13 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, d
     self.model_fitting_model_selection = model_selection
 
     # Add fraction affected to plate groups 
-    self.plate_groups["bmdrc.frac.affected"] = self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]
+    if hasattr(self, "value"):
+        self.plate_groups["bmdrc.frac.affected"] = self.plate_groups["bmdrc.num.affected"] / self.plate_groups["bmdrc.num.nonna"]
+    else:
+        self.plate_groups["bmdrc.frac.affected"] = self.plate_groups[self.response]
+        self.plate_groups["bmdrc.num.tot"] = np.nan
+        self.plate_groups["bmdrc.num.affected"] = self.plate_groups["bmdrc.frac.affected"]
+        self.plate_groups["bmdrc.num.nonna"] = 1
 
     # Pull dose_response
     dose_response = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]
@@ -651,11 +660,20 @@ def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, d
         # Subset to endpoint
         sub_data = dose_response[dose_response["bmdrc.Endpoint.ID"] == endpoint]
 
-        # Only keep required columns, and sum counts across plates
-        sub_data = sub_data[[self.concentration, "bmdrc.num.tot", "bmdrc.num.affected", "bmdrc.num.nonna"]].groupby(self.concentration).sum().reset_index()
+        if hasattr(self, "value"):
 
-        # Calculate fraction affected
-        sub_data["bmdrc.frac.affected"] = sub_data["bmdrc.num.affected"] / sub_data["bmdrc.num.nonna"]
+            # Only keep required columns, and sum counts across plates
+            sub_data = sub_data[[self.concentration, "bmdrc.num.tot", "bmdrc.num.affected", "bmdrc.num.nonna"]].groupby(self.concentration).sum().reset_index()
+
+            # Calculate fraction affected
+            sub_data["bmdrc.frac.affected"] = sub_data["bmdrc.num.affected"] / sub_data["bmdrc.num.nonna"]
+
+        else:
+
+            sub_data = sub_data[[self.concentration, "bmdrc.frac.affected"]].groupby(self.concentration).sum().reset_index()
+            sub_data["bmdrc.num.tot"] = np.nan
+            sub_data["bmdrc.num.affected"] = sub_data["bmdrc.frac.affected"]
+            sub_data["bmdrc.num.nonna"] = 1
 
         # Calculate P-Value Function
         def calc_p_value(PredictedValues, Params):
@@ -1006,7 +1024,7 @@ def calc_fit_statistics(self):
 
         # Get the dose response data
         Data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == id]
-
+        
         # Get the AUC, min, and max dose 
         AUC = np.trapz(Data["bmdrc.frac.affected"], x = Data[self.concentration])
         Min_Dose = round(min(Data[self.concentration]), 4)

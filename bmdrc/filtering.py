@@ -379,14 +379,22 @@ def correlation_score(self, score, apply, diagnostic_plot):
     # Pull plate groups
     CorScore = self.plate_groups
 
-    # First, only keep the values that aren't being filtered
-    CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", "bmdrc.num.nonna", "bmdrc.num.affected"]]
+    # If the data is BinaryClass where plate and well information is available, do the following
+    if hasattr(self, "value"):
 
-    # Sum up counts
-    CorScore = CorScore.groupby([self.concentration, "bmdrc.Endpoint.ID"]).sum().reset_index()
+        # First, only keep the values that aren't being filtered
+        CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", "bmdrc.num.nonna", "bmdrc.num.affected"]]
 
-    # Calculate response
-    CorScore["Response"] = CorScore["bmdrc.num.affected"] / CorScore["bmdrc.num.nonna"]
+        # Sum up counts
+        CorScore = CorScore.groupby([self.concentration, "bmdrc.Endpoint.ID"]).sum().reset_index()
+
+        # Calculate response
+        CorScore["Response"] = CorScore["bmdrc.num.affected"] / CorScore["bmdrc.num.nonna"]
+
+    else:
+
+        # Calculate the response
+        CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", self.response]].rename(columns = {self.response:"Response"})
 
     # Sort data.frame appropriately
     CorScore.sort_values(by = ["bmdrc.Endpoint.ID", self.concentration])
