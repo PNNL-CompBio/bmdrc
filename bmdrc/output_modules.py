@@ -8,16 +8,46 @@ __author__ = "David Degnan"
 
 def benchmark_dose(self, path):
         
-    # Pull BMDS. Flag of 0 is bad, and flag of 1 is good. 
+    # Pull BMDS. 
+    ## Flag meanings:
+    ## 0 - failed minimum concentration filter
+    ## 1 - failed other filter
+    ## 2 - Passes all filters, p-value on spearman above 0.32
+    ## 4 - Passes all filters, p-value on spearman below or equal to 0.32
+
     BMDS = self.bmds
-    BMDS["DataQC_Flag"] = 1
+
+    # If modeled, the data passed all filters.
+    BMDS["DataQC_Flag"] = 2
+
+    # Pull from the goodness of fit tests
+    for row in range(len(BMDS)):
+
+        # Extract endpoint, model, and p_values
+        the_endpoint = BMDS["bmdrc.Endpoint.ID"][row]
+        the_model = BMDS["Model"][row]
+        p_val_df = self.p_value_df
+        p_val = p_val_df.loc[p_val_df["bmdrc.Endpoint.ID"] == the_endpoint, the_model].tolist()[0]
+
+        # If the p-value is too low, then make the flag a 4
+        if p_val <= 0.32:
+            BMDS.loc[BMDS["bmdrc.Endpoint.ID"] == the_endpoint, "DataQC_Flag"] = 4
 
     # Add filtered data as needed
     if self.bmds_filtered is not None:
 
         # Pull filtered information
         BMDS_Filtered = self.bmds_filtered
-        BMDS_Filtered["DataQC_Flag"] = 0
+        BMDS_Filtered["DataQC_Flag"] = 1
+
+        # Add where minimum concentration filter was the issue
+        for row in range(len(BMDS_Filtered)):
+
+            the_endpoint = BMDS_Filtered["bmdrc.Endpoint.ID"][row]
+            the_reasons = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == the_endpoint]["bmdrc.filter.reason"].unique().tolist()
+
+            if " correlation_score_filter" in the_reasons:
+                BMDS_Filtered["DataQC_Flag"][row] = 0
 
         # Remove endpoints whose models were already fit
         the_ids = BMDS["bmdrc.Endpoint.ID"].unique().tolist()
