@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
   name = 'bmdrc',        
   packages = ['bmdrc'],   
-  version = '0.0.1.1',      
+  version = '0.0.1.3',      
   description = 'A package for fitting benchmark dose curves to dichotomous data and light photomotor response data',   # Give a short description about your library
   author = ['David Degnan', 'Sara Gosline', 'Katrina Waters'],               
   author_email = ['David.Degnan@pnnl.gov', 'Sara.Gosline@pnnl.gov', 'Katrina.Waters@pnnl.gov'],     
