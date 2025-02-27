@@ -1,6 +1,6 @@
 [project]
 name = "bmdrc"
-version = "0.0.1.2"
+version = "0.0.1.3"
 authors = [
     {name="David Degnan", email="david.degnan@pnnl.gov"},
     {name="Sara Gosline", email="sara.gosline@pnnl.gov"},

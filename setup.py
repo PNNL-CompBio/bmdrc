@@ -8,7 +8,7 @@ setup(
   author = ['David Degnan', 'Sara Gosline', 'Katrina Waters'],               
   author_email = ['David.Degnan@pnnl.gov', 'Sara.Gosline@pnnl.gov', 'Katrina.Waters@pnnl.gov'],     
   url = 'https://github.com/PNNL-CompBio/bmdrc', 
-  download_url = 'https://github.com/PNNL-CompBio/bmdrc/archive/refs/tags/v_0.0.1.tar.gz',
+  download_url = 'https://github.com/PNNL-CompBio/bmdrc/archive/refs/tags/v_0.0.3.tar.gz',
   install_requires=[           
     "pandas>=2.1.4",
     "numpy>=1.26.2",
