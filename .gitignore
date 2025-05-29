@@ -1,3 +1,6 @@
+# Folders not needed
+citations/
+
 # bmdrc files
 bmdrc/output_modules/bmdrc_files
 bmdrc/output_modules/bmdrc.html
