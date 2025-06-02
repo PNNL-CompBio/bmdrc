@@ -1,8 +1,11 @@
 [project]
 name = "bmdrc"
-version = "0.0.1.3"
+version = "1.0.0"
 authors = [
     {name="David Degnan", email="david.degnan@pnnl.gov"},
+    {name="Lisa Bramer", email="lisa.bramer@pnnl.gov"},
+    {name="Lisa Truong", email="lisa.truong@oregonstate.edu"},
+    {name="Robyn Tanguay", email="robyn.tanguay@oregonstate.edu"},
     {name="Sara Gosline", email="sara.gosline@pnnl.gov"},
     {name="Katrina Waters", email="katrina.waters@pnnl.gov"},
 ]
