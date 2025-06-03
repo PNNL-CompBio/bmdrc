@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "bmdrc"
 version = "1.0.0"
@@ -11,7 +15,7 @@ authors = [
 ]
 description = "A package for fitting benchmark dose curves to dichotomous data and light photomotor response data"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "pandas>=2.1.4",
     "numpy>=1.26.2",
@@ -26,6 +30,3 @@ dependencies = [
 Homepage = "https://github.com/PNNL-CompBio/bmdrc"
 Issues = "https://github.com/PNNL-CompBio/bmdrc"
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
