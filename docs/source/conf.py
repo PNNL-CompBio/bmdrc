@@ -22,14 +22,10 @@ extensions = ["sphinx.ext.autodoc", "sphinx.ext.coverage", "sphinx.ext.napoleon"
 autosummary_generate = True
 templates_path = ['_templates']
 exclude_patterns = []
-
-
+autodoc_typehints = ["none"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'classic'
 html_static_path = ['_static']
-html_theme_options = {
-   "show_nav_level": 2
-}

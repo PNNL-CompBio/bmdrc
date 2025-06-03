@@ -3,16 +3,24 @@ import numpy as np
 
 __author__ = "David Degnan"
 
-def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
+def well_to_na(self, endpoint_name: list[str], endpoint_value: list[float], except_endpoint: list[str]):
     '''
-    Remove any wells where a specific endpoint has a specific value. 
-    Wells are set to NA.
+    Remove any wells where a specific endpoint has a specific value. Wells are set to NA.
 
-    endpoint_name: (list - string) list of endpoints to remove 
+    Parameters
+    ----------
 
-    endpoint_value: (list - numeric) specific value or list of values that the endpoint needs to have to remove the well
+    endpoint_name
+        A list of endpoints to remove written as strings
 
-    except_endpoint: (list - string) list of endpoints that should not have their wells affected
+    endpoint_value
+        A list of specific values that the endpoints which need to be removed have. For example, if you would like to remove all endpoints in endpoint 
+        name with a 0, this value should be 0. See the vignettes for examples. 
+
+    except_endpoint
+        A list of endpoints that should not have their wells affected by this rule. For example, a 24 hour mortality endpoint that should not affect an
+        overall mortality endpoint. See the vignettes for examples.
+
     '''
 
     ############################
@@ -78,16 +86,16 @@ def well_to_na(self, endpoint_name, endpoint_value, except_endpoint):
     else:
         self.report_well_na = [new_attributes]
 
-def endpoint_combine(self, endpoint_dict):
+def endpoint_combine(self, endpoint_dict: dict[str:[str]]):
     '''
-    Combine endpoints and create new endpoints.
-    For example, multiple 24 hour endpoints can be combined to create an "Any 24" endpoint.
-    New endpoints are created with a binary or statement, meaning that if there is a 1 
-    in any of the other endpoints, the resulting endpoint is a 1. Otherwise, it is 
+    Combine endpoints and create new endpoints. For example, multiple 24 hour endpoints can be combined to create an "Any 24" endpoint.
+    New endpoints are created with a binary or statement, meaning that if there is a 1 in any of the other endpoints, the resulting endpoint is a 1. Otherwise, it is 
     0 unless the other endpoints are all NA. Then the final value is NA.
 
-    endpoint_dict: (dictionary) A dictionary where names are the new endpoint, and values are a list
-    containing the endpoints to calculate these values from. 
+    Parameters
+    ----------
+    endpoint_dict
+        A dictionary where names are the new endpoint, and values are a list containing the endpoints to calculate these values from. 
 
     '''
 

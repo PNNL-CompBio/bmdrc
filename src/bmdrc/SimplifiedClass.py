@@ -70,24 +70,26 @@ class HalfClass(object):
 
 class SimplifiedClass(HalfClass):
     '''
-    Class for fitting any data with a response from 0 to 1. 
-    Does not contain the pre-processing & filtering options of BinaryClass.
+    Generates a bmdrc object from proportions (ranging from 0 to 1). Does not contain the pre-processing & filtering options of BinaryClass.
 
-    df: (pandas DataFrame) A dataframe containing columns title chemical, 
-    plate, well, concentration, endpoint (long format only), value (long format only).
-    If the data is in wide format, all additional columns are assumed to be endpoints.
+    Parameters
+    ----------
 
-    chemical: (string) name of the column containing the chemical IDs, which
-    should be strings
+    df
+        A pandas dataframe containing columns with chemical, concentration, endpoint, and response information.
 
-    concentration: (string) name of the column containing the concentrations, which
-    should be numerics
+    chemical
+        A string indicating the name of the column containing the chemical IDs, which should be strings
 
-    endpoint: (string) name of the column containing endpoints, which should be
-    a string. 
+    concentration
+        A string indicating the name of the column containing the concentrations, which should be numerics
 
-    response: (string) name of the column containing the response values, which should 
-    range from 0 to 1.
+    endpoint
+        A string indicating the name of the column containing endpoints, which should be strings. 
+
+    response
+        A string indicating the name of the column containing the response values, which should range from 0 to 1.
+
     '''
 
     # Define the input checking functions 

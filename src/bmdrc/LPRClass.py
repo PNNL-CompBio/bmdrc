@@ -8,13 +8,13 @@ from .BinaryClass import DataClass, BinaryClass
 
 class LPRClass(DataClass):
     '''
-    Generate a binary class object from larval photomotor response data, which must be in long format. 
+    Generates a bmdrc object from larval photomotor response data, which must be in long format. 
 
     Parameters
     ----------
     
     df
-        A pandas dataframe containing columns with the chemical, concentration, plate, well, time, and value. 
+        A pandas dataframe containing columns with the chemical, concentration, plate, well, time, and value information. 
 
     chemical
         A string indicating the name of the column containing the chemical IDs, which should be strings

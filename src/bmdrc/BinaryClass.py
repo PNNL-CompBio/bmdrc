@@ -88,27 +88,26 @@ class DataClass(object):
 
 class BinaryClass(DataClass):
     '''
-    Generates a binary class object where input values are either a 0, 1, or NA.
-    Used with zebrafish assays. For a more generic class, use SimplifiedClass().
+    Generates a bmdrc object where input values are either a 0, 1, or NA. For propotional data, use SimplifiedClass().
 
     
     Parameters
     ----------
     df
-        A pandas dataframe containing columns title chemical, plate, well, concentration, endpoint (long format only), 
-        value (long format only). If the data is in wide format, all additional columns are assumed to be endpoints.
+        A pandas dataframe containing columns containing chemical, plate, well, concentration, endpoint (long format only), 
+        value (long format only) information. If the data is in wide format, all additional columns are assumed to be endpoints.
 
     chemical
-        A string indicating the name of the column containing the chemical IDs, which should be strings
+        A string indicating the name of the column containing the chemical IDs, which should be strings.
 
     plate
-        A string incidating the name of the column indicating the plate IDs, which should be strings
+        A string incidating the name of the column indicating the plate IDs, which should be strings.
 
     well
-        A string indicating the name of the column with the well IDs, which should be strings
+        A string indicating the name of the column with the well IDs, which should be strings.
 
     concentration
-        A string indicating the name of the column containing the concentrations, which should be numerics
+        A string indicating the name of the column containing the concentrations, which should be numerics.
 
     endpoint
         A string indicating the name of the column containing endpoints, which should be a string. 
