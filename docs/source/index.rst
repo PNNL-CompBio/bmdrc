@@ -6,6 +6,9 @@ Welcome to bmdrc!
 This package is a statistics toolkit which can be followed in 5 main steps: `1. Upload Class Options`_, 
 `2. Preprocessing Options`_, 
 
+**NOTE!** Backend function names do not match the frontend function names in objects. Pay close attention to the example code and 
+vignettes, instead of the backend function descriptions. Thank you.
+
 #######################
 1. Upload Class Options
 #######################
@@ -20,11 +23,7 @@ Upload data using one of the following class options, depending on your input da
 Binary Class
 ************
 
-**Parameters**
-
 .. autoclass:: bmdrc.BinaryClass.BinaryClass
-
-**Examples**
 
 .. code-block:: python
 
@@ -56,16 +55,12 @@ Binary Class
 LPR Class
 *********
 
-**Parameters**
-
-.. automodule:: bmdrc.LPRClass.LPRClass
-
-**Examples**
+.. autoclass:: bmdrc.LPRClass.LPRClass
 
 .. code-block:: python
 
    # Convert the continuous data to dichotomous 
-   LPR = LPRClass(
+   LPRClass(
       df = pd.read_csv("path/to/lpr.csv"),
       chemical = "chemical.id", # Column in file
       plate = "plate.id", # Column in file
@@ -82,11 +77,7 @@ LPR Class
 Simplified Class
 ****************
 
-**Parameters**
-
-.. automodule:: bmdrc.SimplifiedClass.SimplifiedClass
-
-**Examples**
+.. autoclass:: bmdrc.SimplifiedClass.SimplifiedClass
 
 .. code-block:: python
 
@@ -105,38 +96,38 @@ Simplified Class
 There are currently three preprocessing options including: `Combining Endpoints`_, `Removing Endpoints`_, and `Removing Wells`_.
 
 *******************
-Combining Endpoints
+Combining Endpoints 
 *******************
 
-**Parameters**
-
-.. automodule:: bmdrc.preprocessing.endpoint_combine
-
-**Examples**
+.. autoclass:: bmdrc.preprocessing.endpoint_combine
 
 .. code-block:: python
 
    # Dictionary of terms to add
    endpoint_dict = {"ANY24":["NC24", "DP24", "SM24"], "ANY":["NC24", "DP24", "SM24", "JAW"]}
 
-   # Create a bmdrc object and save it as long. See the vignettes. Add new endpoint
+   # Create a bmdrc object and save it as Long. See the vignettes. Add new endpoint
    Long.combine_and_create_new_endpoints(endpoint_dict)
 
-******************
-Removing Endpoints
-******************
+*******************
+Removing Endpoints 
+*******************
+
+.. autoclass:: bmdrc.preprocessing.remove_endpoints
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. See the vignettes
+   # Remove the endpoint that should not be modeled
+   Long.remove_endpoints("DNC")
 
 **************
 Removing Wells
 **************
 
-**Parameters**
-
-.. autofunction:: bmdrc.preprocessing.well_to_na
-
-**Examples**
+.. autoclass:: bmdrc.preprocessing.well_to_na
 
 .. code-block:: python
 
-   # Create a bmdrc object and save it as long. See the vignettes
+   # Create a bmdrc object and save it as Long. See the vignettes
    Long.set_well_to_na(endpoint_name = "DNC", endpoint_value = 1, except_endpoint = ["ANY24"])

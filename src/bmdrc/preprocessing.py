@@ -86,7 +86,7 @@ def well_to_na(self, endpoint_name: list[str], endpoint_value: list[float], exce
     else:
         self.report_well_na = [new_attributes]
 
-def endpoint_combine(self, endpoint_dict: dict[str:[str]]):
+def endpoint_combine(self, endpoint_dict: dict):
     '''
     Combine endpoints and create new endpoints. For example, multiple 24 hour endpoints can be combined to create an "Any 24" endpoint.
     New endpoints are created with a binary or statement, meaning that if there is a 1 in any of the other endpoints, the resulting endpoint is a 1. Otherwise, it is 
@@ -148,11 +148,16 @@ def endpoint_combine(self, endpoint_dict: dict[str:[str]]):
     else:
         self.report_combination = endpoint_dict
 
-def remove_endpoints(self, endpoint_name):
+def remove_endpoints(self, endpoint_name: list[str]):
     '''
     Completely remove an endpoint or set of endpoints from the dataset
 
-    endpoint_name: (list - string) A list of endpoints to remove
+    Parameters
+    ----------
+
+    endpoint_name
+        A list of endpoints to remove written as strings
+    
     '''
 
     ############################
