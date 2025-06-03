@@ -8,37 +8,40 @@ from .BinaryClass import DataClass, BinaryClass
 
 class LPRClass(DataClass):
     '''
-    Generate a binary class object from light photomotor response data,
-    which must be in long format. 
+    Generate a binary class object from larval photomotor response data, which must be in long format. 
 
-    df: (pandas DataFrame) A dataframe containing columns with the chemical, 
-    concentration, plate, well, time, and value. 
+    Parameters
+    ----------
+    
+    df
+        A pandas dataframe containing columns with the chemical, concentration, plate, well, time, and value. 
 
-    chemical: (string) name of the column containing the chemical IDs, which
-    should be strings
+    chemical
+        A string indicating the name of the column containing the chemical IDs, which should be strings
 
-    plate: (string) name of the column indicating the plate IDs, which should be
-    strings
+    plate
+        A string indicating the name of the column indicating the plate IDs, which should be strings
 
-    well: (string) name of the column with the well IDs, which should be strings
+    well
+        A string indicating the name of the column with the well IDs, which should be strings
 
-    concentration: (string) name of the column containing the concentrations, which
-    should be numerics
+    concentration
+        A string indicating the name of the column containing the concentrations, which should be numerics
 
-    time: (string) name of the column containing time, which should be
-    a string or integer. Strings should contain a number. 
+    time
+        A string indicating the name of the column containing time, which should be a string or integer. Strings should contain a number. 
 
-    value: (string) name of the column containing the binary values, which should 
-    be 0 for absent, and 1 for present. Not used if the light photomotor response 
+    value
+        A string indicating the name of the column containing the binary values, which should be 0 for absent, and 1 for present. Not used if the light photomotor response 
 
-    cycle_time: (numeric) length of a light or dark cycle. Default is 20. 
-    The unit is a 6-second measure, so 20 six second measures is 2 minutes.
+    cycle_time
+        A numeric for the length of a light or dark cycle. Default is 20. The unit is a 6-second measure, so 20 six second measures is 2 minutes.
 
-    cycle_cooldown: (numeric) length of time between cycles. Default is 10.
-    The unit is a 6-second measure, so 10 six second measures is 1 minute. 
+    cycle_cooldown
+        A numeric for the length of time between cycles. Default is 10. The unit is a 6-second measure, so 10 six second measures is 1 minute. 
 
-    starting_cycle: (string) either "light" or "dark" depending on whether
-    the first measurement was a light or dark cycle. Default is "light". 
+    starting_cycle
+        A string of either the "light" or "dark" cycle depending on whether the first measurement was a light or dark cycle. Default is "light". 
 
     '''
 

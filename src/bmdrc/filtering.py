@@ -53,7 +53,7 @@ def make_plate_groups(self):
     # Add a filtered reason status 
     self.plate_groups["bmdrc.filter.reason"] = ""
     
-def check_apply_diagnostic(apply, diagnostic_plot):
+def __check_apply_diagnostic(apply, diagnostic_plot):
     '''
     Support function for the filter modules. 
     Check that apply and diagnostic are acceptable inputs.
@@ -71,7 +71,7 @@ def check_apply_diagnostic(apply, diagnostic_plot):
     if type(diagnostic_plot) != bool:
         raise Exception("diagnostic_plot must be a True or False.")
         
-def negative_control_plot(neg_control_df):
+def __negative_control_plot(neg_control_df):
     '''
     Support function for the filter modules. 
     Return the negative control diagnostic plot. 
@@ -94,17 +94,19 @@ def negative_control_plot(neg_control_df):
 
     return(fig)
 
-def negative_control(self, percentage, apply, diagnostic_plot):
+def negative_control(self, percentage: float, apply: bool, diagnostic_plot: bool):
     '''
     Filter to remove plates with unusually high expression in the controls. 
 
-    percentage: (float) A value between 0 and 100 indicating the percentage of phenotypic
-    expression in the controls that is permissable. Default is 50. 
+    Parameters
+    -----------
+    percentage
+        A float between 0 and 100 indicating the percentage of phenotypic expression in the controls that is permissable. Default is 50. 
+    apply
+        A boolean to determine whether the filter should be applied. Default is False. 
+    diagnostic_plot
+        A boolean to determine whether to make a diagnostic plot if apply is False. Default is False.
 
-    apply: (logical) Apply the filter. Default is False. 
-
-    diagnostic_plot: (logical) If apply is False, see a diagnostic plot with True. Otherwise,
-    only a diagnostics data.frame will be stored in the object. Default is False. 
     '''
 
     ##################
@@ -126,7 +128,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
         print("percentage should range from 0-100, as in 0-100%. This value will be a very small percentage.")
     
     # Check apply and diagnostic
-    check_apply_diagnostic(apply, diagnostic_plot)
+    __check_apply_diagnostic(apply, diagnostic_plot)
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -159,7 +161,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
     # Always make the backend data frame 
     self.filter_negative_control_df = NegControlRes
     self.filter_negative_control_thresh = percentage
-    self.filter_negative_control_plot = negative_control_plot(NegControlRes)
+    self.filter_negative_control_plot = __negative_control_plot(NegControlRes)
 
     #######################
     ## RETURN DIAGNOSTIC ##
@@ -185,7 +187,7 @@ def negative_control(self, percentage, apply, diagnostic_plot):
             self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter.reason"] + " negative_control_filter"
 
 
-def min_concentration_plot(min_concentration_df):
+def __min_concentration_plot(min_concentration_df):
     '''
     Support function for the filter modules. 
     Returns the minimum concentration diagnostic plot. 
@@ -240,7 +242,7 @@ def min_concentration(self, count, apply, diagnostic_plot):
         raise Exception("count must be at least 1.")
     
     # Check apply and diagnostic
-    check_apply_diagnostic(apply, diagnostic_plot)
+    __check_apply_diagnostic(apply, diagnostic_plot)
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -273,7 +275,7 @@ def min_concentration(self, count, apply, diagnostic_plot):
     # Add summary filter to object
     self.filter_min_concentration_df = ConcCountSum.sort_values("NumConc", ascending = False).reset_index(drop = True)
     self.filter_min_concentration_thresh = count
-    self.filter_min_concentration_plot = min_concentration_plot(ConcCountSum)
+    self.filter_min_concentration_plot = __min_concentration_plot(ConcCountSum)
 
     #######################
     ## RETURN DIAGNOSTIC ##
@@ -297,7 +299,7 @@ def min_concentration(self, count, apply, diagnostic_plot):
             self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(EndpointRemoval), "bmdrc.filter.reason"] + " min_concentration_filter"
 
 
-def correlation_score_plot(correlation_score, threshold):
+def __correlation_score_plot(correlation_score, threshold):
     '''
     Support function for the filter modules. 
     Returns the distribution of correlation scores. 
@@ -361,7 +363,7 @@ def correlation_score(self, score, apply, diagnostic_plot):
         raise Exception("score must be larger than -1 or less than 1 to filter any values.")
     
     # Check apply and diagnostic
-    check_apply_diagnostic(apply, diagnostic_plot)
+    __check_apply_diagnostic(apply, diagnostic_plot)
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -417,7 +419,7 @@ def correlation_score(self, score, apply, diagnostic_plot):
     # Add correlation summary object to object
     self.filter_correlation_score_df = CorScore
     self.filter_correlation_score_thresh = score
-    self.filter_correlation_score_plot = correlation_score_plot(CorScore, score)
+    self.filter_correlation_score_plot = __correlation_score_plot(CorScore, score)
 
     #######################
     ## RETURN DIAGNOSTIC ##

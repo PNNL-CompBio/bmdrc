@@ -89,33 +89,40 @@ class DataClass(object):
 class BinaryClass(DataClass):
     '''
     Generates a binary class object where input values are either a 0, 1, or NA.
-    Used with zebrafish assays. For a more generic class, use ResponseOnlyClass().
+    Used with zebrafish assays. For a more generic class, use SimplifiedClass().
 
-    df: (pandas DataFrame) A dataframe containing columns title chemical, 
-    plate, well, concentration, endpoint (long format only), value (long format only).
-    If the data is in wide format, all additional columns are assumed to be endpoints.
+    
+    Parameters
+    ----------
+    df
+        A pandas dataframe containing columns title chemical, plate, well, concentration, endpoint (long format only), 
+        value (long format only). If the data is in wide format, all additional columns are assumed to be endpoints.
 
-    chemical: (string) name of the column containing the chemical IDs, which
-    should be strings
+    chemical
+        A string indicating the name of the column containing the chemical IDs, which should be strings
 
-    plate: (string) name of the column indicating the plate IDs, which should be
-    strings
+    plate
+        A string incidating the name of the column indicating the plate IDs, which should be strings
 
-    well: (string) name of the column with the well IDs, which should be strings
+    well
+        A string indicating the name of the column with the well IDs, which should be strings
 
-    concentration: (string) name of the column containing the concentrations, which
-    should be numerics
+    concentration
+        A string indicating the name of the column containing the concentrations, which should be numerics
 
-    endpoint: (string) name of the column containing endpoints, which should be
-    a string. Not used if the data is in wide format. 
+    endpoint
+        A string indicating the name of the column containing endpoints, which should be a string. 
+        Note that this parameter is not needed if the data is in wide format. 
 
-    value: (string) name of the column containing the binary values, which should 
-    be 0 for absent, and 1 for present. Not used if the data is in wide format.
+    value
+        A string indicating the name of the column containing the binary values, which should be 0 for absent, 
+        and 1 for present. Note that this parameter is not needed if the data is in wide format.
 
-    format: (string) indicate whether the data is in 'long' or 'wide' format. Wide
-    format requires only the chemical, plate, well, and concentration columns.
-    The rest of the columns are assumed to be endpoints. Wide formats are then converted
-    to the long format. 
+    format
+        A string to indicate whether the data is in 'long' or 'wide' format. Wide format requires only the chemical, 
+        plate, well, and concentration columns. The rest of the columns are assumed to be endpoints. Wide formats are 
+        then converted to the long format.
+         
     '''
 
     # Define the input checking functions 
