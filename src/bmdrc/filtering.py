@@ -6,9 +6,7 @@ __author__ = "David Degnan"
 
 def make_plate_groups(self):
     '''
-    Support function for the filter modules. 
-    Assign groups based on the chemical, concentration, plate, and endpoint.
-    This step should be completed after all pre-processing steps are finished. 
+    Support function for the filter modules. Assign groups based on the chemical, concentration, plate, and endpoint. This step should be completed after all pre-processing steps are finished. 
     '''
 
     # If the data is BinaryClass where plate and well information is available, do the following
@@ -102,11 +100,12 @@ def negative_control(self, percentage: float, apply: bool, diagnostic_plot: bool
     -----------
     percentage
         A float between 0 and 100 indicating the percentage of phenotypic expression in the controls that is permissable. Default is 50. 
+    
     apply
         A boolean to determine whether the filter should be applied. Default is False. 
+    
     diagnostic_plot
         A boolean to determine whether to make a diagnostic plot if apply is False. Default is False.
-
     '''
 
     ##################
@@ -213,18 +212,21 @@ def __min_concentration_plot(min_concentration_df):
 
     return(fig)
 
-def min_concentration(self, count, apply, diagnostic_plot): 
+def min_concentration(self, count: int, apply: bool, diagnostic_plot: bool): 
     '''
     Filter to remove endpoints without enough concentration measurements. This count does not include
     the baseline/control measurement of a concentration of 0. 
 
-    count: (integer) The minimum number of concentrations an endpoint and chemical combination
-    needs. Default is 3. 
+    Parameters
+    ----------
+    count
+        An integer indicating the minimum number of concentrations an endpoint and chemical combination needs. Default is 3. 
 
-    apply: (logical) Apply the filter. Default is False. 
+    apply
+        A boolean to indicate whether the filter should be applied. Default is False. 
 
-    diagnostic_plot: (logical) If apply is False, see a diagnostic plot with True. Otherwise,
-    only a diagnostics data.frame will be stored in the object. Default is False. 
+    diagnostic_plot
+        A boolean to determine whether to make a diagnostic plot if apply is False. Default is False.
     '''
 
     ##################
@@ -336,16 +338,21 @@ def __correlation_score_plot(correlation_score, threshold):
 
     return fig
 
-def correlation_score(self, score, apply, diagnostic_plot): 
+def correlation_score(self, scor: float, apply: bool, diagnostic_plot: bool): 
     '''
     Filter to remove endpoints with low correlation score thresholds.
 
-    score: (float) A threshold for the correlation score. 
+    Parameters
+    ----------
+    score 
+        A threshold for the correlation score as a float (ranging from -1 to 1). 
 
-    apply: (logical) Apply the filter. Default is False. 
+    apply
+        A boolean to determine whether the filter is applied to the data. Default is False. 
 
-    diagnostic_plot: (logical) If apply is False, see a diagnostic plot with True. Otherwise,
-    only a diagnostics data.frame will be stored in the object. Default is False. 
+    diagnostic_plot
+        A boolean to determine whether to make a diagnostic plot if apply is False. Default is False.
+    
     '''
 
     ##################

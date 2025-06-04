@@ -3,8 +3,8 @@ Welcome to bmdrc!
 #################
 
 *bmdrc* is a python package for fitting benchmark dose curves to dichotomous, proportional, and light photomotor response data.
-This package is a statistics toolkit which can be followed in 5 main steps: `1. Upload Class Options`_, 
-`2. Preprocessing Options`_, 
+This package is a statistics toolkit which can be followed in 5 main steps: `1. Upload Class Options`_, `2. Preprocessing Options`_, 
+`3. Filtering Options`_, `4. Model Fit Options`_, and `5. Output File Options`_.
 
 **NOTE!** Backend function names do not match the frontend function names in objects. Pay close attention to the example code and 
 vignettes, instead of the backend function descriptions. Thank you.
@@ -129,5 +129,121 @@ Removing Wells
 
 .. code-block:: python
 
-   # Create a bmdrc object and save it as Long. See the vignettes
+   # Create a bmdrc object and save it as Long. See the vignettes. Set invalid endpoints to NA.
    Long.set_well_to_na(endpoint_name = "DNC", endpoint_value = 1, except_endpoint = ["ANY24"])
+
+####################
+3. Filtering Options
+####################
+
+There are currently three filtering options including: `Minimum Concentration Filter`_, `Negative Control Filter`_, and `Correlation Score Filter`_.
+
+************************
+Correlation Score Filter
+************************
+
+.. autoclass:: bmdrc.filtering.correlation_score
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. See the vignettes.
+   # Apply filter with suggested value of 0.2  
+   Long.filter_correlation_score(score = 0.2, diagnostic_plot = True, apply = False)
+
+****************************
+Minimum Concentration Filter
+****************************
+
+.. autoclass:: bmdrc.filtering.min_concentration
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. See the vignettes. 
+   # Set the percentage and build the diagnostic plot, but don't actually apply the filter. 
+   Long.filter_min_concentration(count = 3, apply = False, diagnostic_plot = True)
+
+***********************
+Negative Control Filter
+***********************
+
+.. autoclass:: bmdrc.filtering.negative_control
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. See the vignettes. 
+   # Filter data with unusually high responses in the controls.
+   Long.filter_negative_control(percentage = 50, apply = False, diagnostic_plot = False)
+
+####################
+4. Model Fit Options
+####################
+
+*****************************
+Fit Models to Response Curves
+*****************************
+
+.. autoclass:: bmdrc.model_fitting.fit_the_models
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. See the vignettes
+   Long.fit_models(gof_threshold = 0.1, aic_threshold = 2, model_selection = "lowest BMDL")
+
+*****************
+Visualize a Curve
+*****************
+ 
+.. autoclass:: bmdrc.model_fitting.gen_response_curve
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. See the vignettes
+   Long.response_curve(chemical_name = "2", endpoint_name = "JAW", model = "log probit")
+
+######################
+5. Output File Options
+######################
+
+**********************
+Output Benchmark Doses
+**********************
+
+.. autoclass:: bmdrc.output_modules.benchmark_dose
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. Run the fit_models() fuction first. See the vignettes
+   Long.output_benchmark_dose()
+
+******************
+Output Dose Tables
+******************
+
+.. autoclass:: bmdrc.output_modules.dose_table
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. Run the fit_models() fuction first. See the vignettes
+   Long.output_dose_table()
+
+*****************
+Output Fits Table
+*****************
+
+.. autoclass:: bmdrc.model_fitting.fits_table
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. Run the fit_models() fuction first. See the vignettes
+   Long.output_fits_table()
+
+************
+Report Files
+************
+
+.. autoclass:: bmdrc.output_modules.report_binary
+
+.. code-block:: python
+
+   # Create a bmdrc object and save it as Long. Run the fit_models() fuction first. See the vignettes
+   Long.report(out_folder = "out/file.md", report_name = "example_out", file_type = ".md")

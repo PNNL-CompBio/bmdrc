@@ -74,7 +74,6 @@ class SimplifiedClass(HalfClass):
 
     Parameters
     ----------
-
     df
         A pandas dataframe containing columns with chemical, concentration, endpoint, and response information.
 

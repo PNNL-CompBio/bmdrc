@@ -585,7 +585,7 @@ class Quantal_Linear_BMD(GenericLikelihoodModel):
 ## MODEL FITTING FUNCTIONS ##
 #############################
 
-def removed_endpoints_stats(self):
+def _removed_endpoints_stats(self):
     '''
     Accessory function to fit_the_models. 
     As the first in the pipeline, this function calculates summary
@@ -622,7 +622,7 @@ def removed_endpoints_stats(self):
         self.bmds_filtered = None
 
 
-def select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode):
+def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode):
     '''
     Accessory function to fit_the_models. 
     This function fits all non-filtered endpoints to the EPA recommended 
@@ -949,7 +949,7 @@ def Calculate_BMDL(conc_variable, Model, FittedModelObj, Data, BMD10, params, Ma
 
     return(BMDL)
 
-def calc_fit_statistics(self):
+def _calc_fit_statistics(self):
     '''
     Accessory function to fit_the_models. 
     Calculates fit statistics for model fits. 
@@ -1047,15 +1047,24 @@ def calc_fit_statistics(self):
     self.bmds = pd.DataFrame(BMDS_Model)
 
 
-def fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode):
+def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selection: str, diagnostic_mode: bool):
     '''
     Fit the EPA recommended models to your dataset. 
 
-    model_selection: Models are selected based on the EPA guidance that the
-    goodness of fit p_value be greater than 0.1. From there, a combination of 
-    EPA guidance and [https://journals.sagepub.com/doi/10.1177/0049124104268644] 
-    recommends AICs within 2 of the lowest AIC score as equivalent fits. "lowest BMDL"
-    follows the EPA guidance of then selecting the model with the lowest BMDL.
+    Parameters
+    ----------
+    gof_threshold
+        A float for the minimum p-value for the goodness-of-fit (gof) test. The default is 0.1
+    
+    aic_threshold
+        A float for the Akaike Information Criterion (AIC) threshold. The default is 2.
+
+    model_selection
+        A string for the model_selection model. Currently, only "lowest BMDL" is supported.
+
+    diagnostic_mode
+        A boolean to indicate whether diagnostic messages should be printed. Default is False
+
     '''
 
     ##################
@@ -1097,13 +1106,13 @@ def fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnost
     ################
 
     # 1. Calculate statistics for endpoints that are filtered out
-    removed_endpoints_stats(self)
+    _removed_endpoints_stats(self)
 
     # 2. Fit models for endpoints that are not filtered out
-    select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode)
+    _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode)
 
     # 3. Calculate statistics
-    calc_fit_statistics(self)
+    _calc_fit_statistics(self)
 
     ####################
     ## ADD ATTRIBUTES ##
@@ -1111,7 +1120,10 @@ def fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnost
 
     self.report_model_fits = True 
 
-def curve_plot(self, to_model, curve, chemical_name, endpoint_name, model):
+def _curve_plot(self, to_model, curve, chemical_name, endpoint_name, model):
+    '''
+    Support function to build curve plots using gen_response_curve
+    '''
 
     # Build figure
     fig = plt.figure(figsize = (10, 5))
@@ -1139,9 +1151,25 @@ def curve_plot(self, to_model, curve, chemical_name, endpoint_name, model):
     return(fig)
 
 
-def gen_response_curve(self, chemical_name, endpoint_name, model, steps):
+def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str, steps: int):
     '''
-    Generate the x and y coordinates of the curve, and optionally a plot 
+    Generate the x and y coordinates of a specific curve, and optionally a plot 
+
+    Parameters
+    ----------
+    chemical_name
+        A string denoting the name of the chemical to generate a curve for 
+
+    endpoint_name
+        A string denoting the name of the endpoint to generate a curve for
+
+    model
+        A string denoting the model engine used to generate the curve. Options are "logistic", "gamma", "weibull", "log logistic", 
+        "probit", "log probit", "multistage2", or "quantal linear"
+
+    steps
+        An integer for the number of doses between the minimum and maximum dose. Default is 10. 
+
     '''
 
     ################
@@ -1263,9 +1291,18 @@ def gen_response_curve(self, chemical_name, endpoint_name, model, steps):
 
     # Save results
     fig_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_curve_plot"
-    setattr(self, fig_name, curve_plot(self, to_model, curve, chemical_name, endpoint_name, model))
+    setattr(self, fig_name, _curve_plot(self, to_model, curve, chemical_name, endpoint_name, model))
 
-def fits_table(self, path):
+def fits_table(self, path: str):
+    '''
+    Calculate several points along a curve for visualization purposes
+
+    Parameters
+    ----------
+    path
+        The path to write the curve fits file to
+    
+    '''
 
     def calc_fits(ID):
         '''Define a helper function to fit points to a curve using an endpoint ID'''

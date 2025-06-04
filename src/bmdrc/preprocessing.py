@@ -9,7 +9,6 @@ def well_to_na(self, endpoint_name: list[str], endpoint_value: list[float], exce
 
     Parameters
     ----------
-
     endpoint_name
         A list of endpoints to remove written as strings
 
@@ -154,7 +153,6 @@ def remove_endpoints(self, endpoint_name: list[str]):
 
     Parameters
     ----------
-
     endpoint_name
         A list of endpoints to remove written as strings
     

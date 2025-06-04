@@ -83,8 +83,8 @@ class DataClass(object):
         fits_table(self, path)
 
     @abstractmethod
-    def report(self, out_folder, report_name = "Benchmark Dose Curves"):
-        report_binary(self, out_folder, report_name)
+    def report(self, out_folder, report_name = "Benchmark Dose Curves", file_type = ".md"):
+        report_binary(self, out_folder, report_name, file_type)
 
 class BinaryClass(DataClass):
     '''
