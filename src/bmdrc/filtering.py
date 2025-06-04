@@ -338,7 +338,7 @@ def __correlation_score_plot(correlation_score, threshold):
 
     return fig
 
-def correlation_score(self, scor: float, apply: bool, diagnostic_plot: bool): 
+def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool): 
     '''
     Filter to remove endpoints with low correlation score thresholds.
 
@@ -358,16 +358,12 @@ def correlation_score(self, scor: float, apply: bool, diagnostic_plot: bool):
     ##################
     ## CHECK INPUTS ##
     ##################
-
-    # Assert that score is a float
-    try:
-        score = float(score)
-    except ValueError:
-        raise Exception("score must be an integer.")
     
     # Score must be greater than -1 or less than 1
-    if score < -1 or score > 1:
-        raise Exception("score must be larger than -1 or less than 1 to filter any values.")
+    if score < -1:
+        score = -1
+    elif score > 1:
+        score = 1
     
     # Check apply and diagnostic
     __check_apply_diagnostic(apply, diagnostic_plot)

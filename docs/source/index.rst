@@ -2,7 +2,7 @@
 Welcome to bmdrc!
 #################
 
-*bmdrc* is a python package for fitting benchmark dose curves to dichotomous, proportional, and light photomotor response data.
+*bmdrc* is a python package for fitting benchmark dose curves to dichotomous, proportional, and larval photomotor response data.
 This package is a statistics toolkit which can be followed in 5 main steps: `1. Upload Class Options`_, `2. Preprocessing Options`_, 
 `3. Filtering Options`_, `4. Model Fit Options`_, and `5. Output File Options`_.
 
