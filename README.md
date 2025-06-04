@@ -2,6 +2,8 @@
 
 Python library for the calculation of **B**ench**M**ark **D**ose **R**esponse **C**urves (bmdrc)
 
+See the Sphinx documentation [here](https://pnnl-compbio.github.io/bmdrc/)
+
 # General Schematic 
 
 The bmdrc library was built to calculate benchmark dose (BMD) response curves for dichotomous (morphological) and light photomotor response datasets, where continuous variables are transformed to dichotomous as described in [Thomas et al 2019](https://www.sciencedirect.com/science/article/pii/S2468111318300732). Potential outputted files include a csv file of all final BMDs and their estimation errors, a csv file of model fits (AIC) for each endpoint, and an html report containing information on how much data was filtered and why, as well as interactive response curve plots. Users may specify their outputs of interest. 
