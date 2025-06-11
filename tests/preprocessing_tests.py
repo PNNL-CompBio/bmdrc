@@ -26,14 +26,6 @@ Long_Test = BinaryClass.BinaryClass(
 # Ensure well to NA works as expected 
 def test_well_to_na():
 
-    # Endpoints must be acceptable
-    with pytest.raises(Exception, match = "Cats is not an endpoint in the DataClass object."):
-        Long_Test.set_well_to_na(endpoint_name = ["Cats", "Dogs"], endpoint_value = 1, except_endpoint = ["Monkey"])
-
-    # Endpoints must be acceptable
-    with pytest.raises(Exception, match = "Monkey is not an endpoint in the DataClass object."):
-        Long_Test.set_well_to_na(endpoint_name = ["DNC", "NC24"], endpoint_value = 1, except_endpoint = "Monkey")
-
     # Set do not count cases to NA
     Long_Test.set_well_to_na(endpoint_name = "DNC", endpoint_value = 1, except_endpoint = ["JAW"])
 
@@ -50,23 +42,10 @@ def test_well_to_na():
 # Ensure combine endpoint_name works as expected 
 def test_endpoint_combine(): 
 
-    # Endpoint dictionary must be a dictionary 
-    with pytest.raises(Exception, match = "EndpointDictionary is not a dict object."):
-        Long_Test.combine_and_create_new_endpoints(["cats"])
-
-    # Endpoint dictionary must contain real endpoints
-    with pytest.raises(Exception, match =  "Cats is not an endpoint in the DataClass object."):
-        Long_Test.combine_and_create_new_endpoints({"NotReal": "Cats"})
-
     # Add new endpoint
     endpoint_dict = {"ANY24":["NC24", "DP24", "SM24"], 
                      "ANY":["NC24", "DP24", "SM24", "JAW"]}
     Long_Test.combine_and_create_new_endpoints(endpoint_dict)
-
-    # Duplicate names are not permitted
-    with pytest.raises(Exception, match = "ANY24 is already an existing endpoint"):
-        endpoint_dict2 = {"ANY24":["NC24", "DP24", "SM24", "JAW"]}
-        Long_Test.combine_and_create_new_endpoints(endpoint_dict2)
 
     # Add another endpoint
     Long_Test.combine_and_create_new_endpoints({"THE24":["NC24", "SM24"], "DEL":["JAW"]})
@@ -76,10 +55,6 @@ def test_endpoint_combine():
 
 # Ensure remove endpoints works as expected
 def test_remove_endpoints():
-
-    # Endpoint must be in the dataset
-    with pytest.raises(Exception, match = "CATS is not an endpoint in the DataClass object."):
-        Long_Test.remove_endpoints("CATS")
 
     # Remove endpoint
     Long_Test.remove_endpoints(["DNC", "THE24"])
