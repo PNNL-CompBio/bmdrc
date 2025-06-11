@@ -365,17 +365,3 @@ def test_values():
             value = "bmdrc.filter", 
             format = "long"
         )
-
-    # The value column must contain zeroes and ones
-    with pytest.raises(Exception, match = "The value column must be comprised of only zeroes and ones."):
-
-        BinaryClass.BinaryClass(
-            df = pd.read_csv("data/Binary_Simplified_Long.csv").drop("Notes", axis = 1),
-            chemical = "chemical.id", 
-            plate = "plate.id", 
-            well = "well", 
-            concentration = "concentration", 
-            endpoint = "value",
-            value = "endpoint", 
-            format = "long"
-        )

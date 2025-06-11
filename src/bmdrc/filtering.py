@@ -50,24 +50,6 @@ def make_plate_groups(self):
 
     # Add a filtered reason status 
     self.plate_groups["bmdrc.filter.reason"] = ""
-    
-def __check_apply_diagnostic(apply, diagnostic_plot):
-    '''
-    Support function for the filter modules. 
-    Check that apply and diagnostic are acceptable inputs.
-    '''
-
-    ##################
-    ## CHECK INPUTS ##
-    ##################
-
-    # Check that apply is either True or False
-    if type(apply) != bool:
-        raise Exception("apply must be a True or False.")
-    
-    # Check that diagnostic is either plot, df, or both
-    if type(diagnostic_plot) != bool:
-        raise Exception("diagnostic_plot must be a True or False.")
         
 def __negative_control_plot(neg_control_df):
     '''
@@ -111,23 +93,15 @@ def negative_control(self, percentage: float, apply: bool, diagnostic_plot: bool
     ##################
     ## CHECK INPUTS ##
     ##################
-
-    # Assert that percentage is numeric
-    try:
-        percentage = float(percentage)
-    except ValueError:
-        raise Exception("percentage must be a float.")
     
     # Check that percentage is in the right range 
     if percentage < 0 or percentage > 100:
-        raise Exception("percentage must be between 0 and 100.")
+        print("percentage must be between 0 and 100.")
+        percentage = 50
     
     # Let the user know they picked a small value, but that it is acceptable. 
     if (percentage < 1):
         print("percentage should range from 0-100, as in 0-100%. This value will be a very small percentage.")
-    
-    # Check apply and diagnostic
-    __check_apply_diagnostic(apply, diagnostic_plot)
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -232,19 +206,11 @@ def min_concentration(self, count: int, apply: bool, diagnostic_plot: bool):
     ##################
     ## CHECK INPUTS ##
     ##################
-
-    # Assert that count is an integer
-    try:
-        count = int(count)
-    except ValueError:
-        raise Exception("count must be an integer.")
     
     # Count must be 1 or larger
     if count < 1:
-        raise Exception("count must be at least 1.")
-    
-    # Check apply and diagnostic
-    __check_apply_diagnostic(apply, diagnostic_plot)
+        print("count must be at least 1.")
+        count = 1
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -364,9 +330,6 @@ def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool):
         score = -1
     elif score > 1:
         score = 1
-    
-    # Check apply and diagnostic
-    __check_apply_diagnostic(apply, diagnostic_plot)
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##

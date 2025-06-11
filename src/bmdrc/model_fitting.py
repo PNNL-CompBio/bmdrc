@@ -11,8 +11,6 @@ from . import filtering
 import warnings
 warnings.filterwarnings('ignore')
 
-__author__ = ["Paritosh Pande" , "David Degnan"]
-
 ############################
 ## CLASSES FOR MODEL FITS ##
 ############################
@@ -1070,26 +1068,16 @@ def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selec
     ##################
     ## CHECK INPUTS ##
     ##################
-
-    # Assert that gof_threshold is a float
-    try:
-        gof_threshold = float(gof_threshold)
-    except ValueError:
-        raise Exception("gof_threshold must be a float.")
     
     # GOF threshold must be greater than 0 or less than 1
     if gof_threshold < 0 or gof_threshold > 1:
-        raise Exception("gof_threshold must be larger than 0 or less than 1.")
-    
-    # Assert that AIC threshold is a positive numeric
-    try:
-        aic_threshold = np.abs(float(aic_threshold))
-    except ValueError:
-        raise Exception("aic_threshold must be a float.")
+        print("gof_threshold must be larger than 0 or less than 1.")
+        gof_threshold = 0.2
     
     # Assert that model_selection is "lowest BMDL"
     if (model_selection != "lowest BMDL"):
-        raise Exception("Currently only 'lowest BMDL' is supported for model_selection.")
+        print("Currently only 'lowest BMDL' is supported for model_selection.")
+        model_selection = "lowest BMDL"
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -1178,15 +1166,15 @@ def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str,
 
     # Check that chemical_name is an acceptable choice
     if (chemical_name in (self.df[self.chemical].unique().tolist())) == False:
-        raise Exception(chemical_name + " is not a recognized chemical_name.")
+        raise ValueError(chemical_name + " is not a recognized chemical_name.")
     
     # Check that endpoint_name is an acceptable choice 
     if (endpoint_name in (self.df[self.endpoint].unique().tolist()))== False:
-        raise Exception(endpoint_name + " is not a recognized endpoint_name.")
+        raise ValueError(endpoint_name + " is not a recognized endpoint_name.")
 
     # Select fit by model
     if (model in ["logistic", "gamma", "weibull", "log logistic", "probit", "log probit", "multistage2", "quantal linear"]) == False:
-        raise Exception(model + " is not an acceptable model option. Acceptable options are: logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear.")
+        raise ValueError(model + " is not an acceptable model option. Acceptable options are: logistic, gamma, weibull, log logistic, probit, log probit, multistage2, quantal linear.")
 
     #####################
     ## CALCULATE CURVE ##

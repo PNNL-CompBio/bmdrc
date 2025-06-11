@@ -33,7 +33,7 @@ def well_to_na(self, endpoint_name: list[str], endpoint_value: list[float], exce
     # Iterate through each endpoint to confirm it is a valid choice 
     for endpoint in endpoint_name:
         if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
-            raise Exception(endpoint + " is not an endpoint in the DataClass object.")
+            raise ValueError(endpoint + " is not an endpoint in the DataClass object.")
 
     # Convert endpoint value to a list
     if isinstance(endpoint_value, list) == False:
@@ -49,7 +49,7 @@ def well_to_na(self, endpoint_name: list[str], endpoint_value: list[float], exce
         # Check each endpoint
         for endpoint in except_endpoint:
             if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
-                raise Exception(endpoint + " is not an endpoint in the DataClass object.")
+                raise ValueError(endpoint + " is not an endpoint in the DataClass object.")
             
     ####################################
     ## SET WELLS TO NA TO REMOVE THEM ##
@@ -98,14 +98,6 @@ def endpoint_combine(self, endpoint_dict: dict):
 
     '''
 
-    ############################
-    ## CHECK INPUT PARAMETERS ##
-    ############################
-    
-    # Assert that EndpointDictionary is a Dictionary
-    if not isinstance(endpoint_dict, dict):
-        raise Exception("EndpointDictionary is not a dict object.")
-    
     #########################
     ## CREATE NEW ENDPOINT ##
     #########################
@@ -169,7 +161,7 @@ def remove_endpoints(self, endpoint_name: list[str]):
     # Iterate through each endpoint to confirm it is a valid choice 
     for endpoint in endpoint_name:
         if (endpoint in self.df[self.endpoint].unique().tolist()) == False:
-            raise Exception(endpoint + " is not an endpoint in the DataClass object.")
+            raise ValueError(endpoint + " is not an endpoint in the DataClass object.")
         
     ######################
     ## REMOVE ENDPOINTS ##
