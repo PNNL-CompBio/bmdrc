@@ -4,7 +4,7 @@ Python library for the calculation of **B**ench**M**ark **D**ose **R**esponse **
 
 See the Sphinx documentation [here](https://pnnl-compbio.github.io/bmdrc/) 
 
-We suggest using Python version 3.10 or later.
+We suggest using Python version 3.10 or later. 
 
 # General Schematic 
 
