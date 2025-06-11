@@ -3,6 +3,7 @@ import pandas as pd
 from astropy import stats as astrostats
 from bmdrc import filtering 
 import os
+import json
 
 def benchmark_dose(self, path: str):
     '''
@@ -452,5 +453,42 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
 
     else:
 
-        # To Do
-        print("to do")
+        # First pull all attributes as a dictionary
+        attr_dict = self.__dict__
+
+        # Pull all keys
+        keys = list(attr_dict.keys())
+
+        # Now, find all object types
+        type_list = []
+        for key in keys:
+            type_list.append(str(type(attr_dict[key])))
+
+        # Find all data.frame positions
+        df_pos = [x for x in range(len(type_list)) if type_list[x] == "<class 'pandas.core.frame.DataFrame'>"]
+
+        # Convert data.frames
+        for pos in df_pos:
+            attr_dict[keys[pos]] = attr_dict[keys[pos]].to_json(orient = "records")
+
+        # Find all plot positions
+        plot_pos = [x for x in range(len(type_list)) if type_list[x] == "<class 'matplotlib.figure.Figure'>"]
+
+        # Remove all plot positions 
+        for pos in plot_pos:
+            del attr_dict[keys[pos]]
+
+        # Remove _df if it is an atrribute
+        if "_df" in keys:
+            del attr_dict["_df"]
+
+        # Remove model fits if it is an attribute
+        if "model_fits" in keys:
+            del attr_dict["model_fits"]
+
+        # Build json report
+        json_report = json.dumps(attr_dict)
+
+        # Write output
+        with open(out_folder + "/" + report_name + ".json", "w") as file:
+            json.dump(json_report, file, indent = 4)
