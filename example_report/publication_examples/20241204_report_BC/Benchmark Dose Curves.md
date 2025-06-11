@@ -181,7 +181,7 @@ Below is a summary table of the number of endpoints with a high quality fit (a f
 |Flag|Count|
 |---|---|
 |0|0|
-|1|6806|
+|1|6805|
 
 #### **Output Modules**
 
