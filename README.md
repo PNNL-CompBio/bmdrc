@@ -6,6 +6,10 @@ See the Sphinx documentation [here](https://pnnl-compbio.github.io/bmdrc/)
 
 We suggest using Python version 3.10 or later. 
 
+Please cite: Degnan, D. J., Bramer, L. M., Truong, L., Tanguay, R. L., Gosline, S. M., & Waters, K. M. (2025). bmdrc: Python package for quantifying phenotypes from chemical exposures with benchmark dose modeling. PLOS Computational Biology, 21(7), e1013337.
+
+Read the full paper [here](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1013337)
+
 # General Schematic 
 
 The bmdrc library was built to calculate benchmark dose (BMD) response curves for dichotomous (morphological) and light photomotor response datasets, where continuous variables are transformed to dichotomous as described in [Thomas et al 2019](https://www.sciencedirect.com/science/article/pii/S2468111318300732). Potential outputted files include a csv file of all final BMDs and their estimation errors, a csv file of model fits (AIC) for each endpoint, and an html report containing information on how much data was filtered and why, as well as interactive response curve plots. Users may specify their outputs of interest. 
