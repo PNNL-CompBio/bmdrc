@@ -50,7 +50,7 @@ Available Models: logistic, gamma, Weibull, log logistic, probit, log probit, mu
 
 **Continuous Data**
 
-*ContinuousClass* The `ContinuousClass` object requires only four columns: chemical, endpoint, concentration, and response (a continuous variable with any range). All selected models 
+- *ContinuousClass* The `ContinuousClass` object requires only four columns: chemical, endpoint, concentration, and response (a continuous variable with any range). All selected models 
 support negative numbers and zeroes. NA values are automatically filtered out. Optionally, an ANOVA can be fit to determine if there's differences in concentrations, with checks to ensure
 an ANOVA model is appropriate for the given dataset. See a full pipeline demo TODO.
 
