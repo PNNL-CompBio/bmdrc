@@ -71,3 +71,9 @@ A sample generated report for:
 * larval photomotor response (LPR) data can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/lpr_class/Benchmark%20Dose%20Curves.md)
 
 * continuous data can be found **TODO**
+
+# Logo
+
+Feel free to use our logo when referring to our tool!
+
+![bmdrc](./bmdrc_logo.png)
