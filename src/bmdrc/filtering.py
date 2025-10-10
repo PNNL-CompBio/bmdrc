@@ -30,7 +30,7 @@ def make_plate_groups(self):
         # Merge to create missingness dataframe
         self.plate_groups = pd.merge(pd.merge(num_tot_samples, num_nonna), num_affected)
 
-    # Else the data is SimplifiedClass
+    # Else the data is ProportionalClass
     else:
 
         # Keep just the required columns 

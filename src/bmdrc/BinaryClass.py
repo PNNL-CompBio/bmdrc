@@ -15,7 +15,7 @@ __author__ = "David Degnan"
 
 class DataClass(object):
     '''
-    An abstract class for all bmdrc accepted datatypes
+    An abstract class for some bmdrc datatypes
     '''
     
     ############################
@@ -88,7 +88,7 @@ class DataClass(object):
 
 class BinaryClass(DataClass):
     '''
-    Generates a bmdrc object where input values are either a 0, 1, or NA. For propotional data, use SimplifiedClass().
+    Generates a bmdrc object where input values are either a 0, 1, or NA. For propotional data, use ProportionalClass().
 
     
     Parameters

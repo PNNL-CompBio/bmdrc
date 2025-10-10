@@ -42,7 +42,7 @@ A phenotype being measured in response to a **chemical** exposure is called an *
 
 - *BinaryClass* The `BinaryClass` object contains specific pre-processing and filtering functions that pertain to plates and wells. Each value should be a 0, 1, or NA, and *bmdrc* will caculate the response column. The following columns are needed for data in long and wide format: chemical, plate, well, concentration. The following columns are only needed for data in wide format: endpoint, value. See a full pipeline demo [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/vignettes/Binary%20Class%20Example.ipynb)
 
-- *ProportionalClass* If your data does not contain plates and wells, the `ProportionalClass` object only requires a chemical, endpoint, concentration, and response (a proportion ranging from 0 to 1). Data must be in long format. See a full pipeline demo [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/vignettes/Simplified%20Class%20Example.ipynb)
+- *ProportionalClass* If your data does not contain plates and wells, the `ProportionalClass` object only requires a chemical, endpoint, concentration, and response (a proportion ranging from 0 to 1). Data must be in long format. See a full pipeline demo [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/vignettes/Proportional%20Class%20Example.ipynb)
 
 - *LPRClass* In the `LPRClass`, larval photomotor response data can be converted to dichotomous as described in [Thomas et al 2019](https://www.sciencedirect.com/science/article/pii/S2468111318300732). Data must be in long format and contain the following columns: chemical, plate, well, concentration, time, and value. Users must specify the time between cycles, the cooldown time between cycles, and whether to start with a light or dark cycle. If this format does not fit your data nicely, please report it to the issues tab. See a full pipeline demo [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/vignettes/LPR%20Class%20Example.ipynb)
 
@@ -50,9 +50,7 @@ Available Models: logistic, gamma, Weibull, log logistic, probit, log probit, mu
 
 **Continuous Data**
 
-- *ContinuousClass* The `ContinuousClass` object requires only four columns: chemical, endpoint, concentration, and response (a continuous variable with any range). All selected models 
-support negative numbers and zeroes. NA values are automatically filtered out. Optionally, an ANOVA can be fit to determine if there's differences in concentrations, with checks to ensure
-an ANOVA model is appropriate for the given dataset. See a full pipeline demo TODO.
+- *ContinuousClass* The `ContinuousClass` object requires only four columns: chemical, endpoint, concentration, and response (a continuous variable with any range). All selected models support negative numbers and zeroes. NA values are automatically filtered out. Optionally, an ANOVA can be fit to determine if there's differences in concentrations, with checks to ensure an ANOVA model is appropriate for the given dataset. See a full pipeline demo [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/vignettes/Continuous%20Class%20Example.ipynb)
 
 Available Models: **ToDo**
 
@@ -60,7 +58,7 @@ Available Models: **ToDo**
  
 ### Example Data 
 
-Example data for dichotomous, larval photomotor response, and continuous **TODO** data can be found [here](https://github.com/PNNL-CompBio/bmdrc/tree/main/data).
+Example data for dichotomous, proportional, larval photomotor response, and continuous data can be found [here](https://github.com/PNNL-CompBio/bmdrc/tree/main/data).
 
 ### Example Report
 
