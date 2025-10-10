@@ -76,4 +76,4 @@ A sample generated report for:
 
 Feel free to use our logo when referring to our tool!
 
-![bmdrc](./bmdrc_logo.png)
+<img src="bmdrc_log.jpg" alt="bmdrc" width="250"/>
