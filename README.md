@@ -10,7 +10,7 @@ Read the full paper [here](https://journals.plos.org/ploscompbiol/article?id=10.
 
 Originally built to calculate benchmark doses (BMDs) for dichotomous data converted to proportions, *bmdrc* has now been expanded to also fit curves for continuous data.
 
-![General bmdrc inputs and outputs](./bmdrc_new.png)
+![General bmdrc inputs and outputs](./bmdrc.png)
 
 1. *Input Data Module:* Import data into the python library.
 
