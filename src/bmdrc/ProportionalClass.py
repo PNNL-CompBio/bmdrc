@@ -51,8 +51,8 @@ class ProportionalClass():
         min_concentration(self, count, apply, diagnostic_plot)
 
     @abstractmethod
-    def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False):
-        correlation_score(self, score, apply, diagnostic_plot)
+    def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False, direction = "below"):
+        correlation_score(self, score, apply, diagnostic_plot, direction)
 
     ###########################
     ## MODEL FITTING MODULES ##
@@ -97,7 +97,7 @@ class ProportionalClass():
         self.concentration = concentration
         self.endpoint = endpoint
         self.response = response
-        self.plate = "plate"
+        self.plate = "plate"  # Placeholder to enable specific functions to run
         self.unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
                             "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
                             "bmdrc.frac.affected"]
@@ -122,7 +122,7 @@ class ProportionalClass():
             raise Exception("df must be a pandas DataFrame.")
         if theDF.empty:
             raise Exception("df cannot be empty. Please provide a pandas DataFrame.")
-        theDF["plate"] = "NoPlate"
+        theDF["plate"] = "NoPlate" # There is no plate information to track
         self._df = theDF
 
     @chemical.setter

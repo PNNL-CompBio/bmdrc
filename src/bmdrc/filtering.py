@@ -7,6 +7,8 @@ __author__ = "David Degnan"
 def make_plate_groups(self):
     '''
     Support function for the filter modules. Assign groups based on the chemical, concentration, plate, and endpoint. This step should be completed after all pre-processing steps are finished. 
+    This is pertinent to data collected on plates with wells (BinaryClass and LPRClass). Cases where there are no plates (ProportionalClass and ContinuousClass) have a variable assigned called
+    "NoClass". This does not disrupt any functionality, and prevents duplicative code.
     '''
 
     # If the data is BinaryClass where plate and well information is available, do the following
@@ -297,14 +299,14 @@ def __correlation_score_plot(correlation_score, threshold):
     # Label axes
     plt.title("Counts of the spearman correlations for endpoint and chemical combinations")
     plt.xlabel("Spearman Correlation")  
-    plt.ylabel("Count")
+    plt.ylabel("Count of Non-Zero Concentration Measurements")
 
     # Add line at correlation
     plt.axvline(x = threshold, color = "red")
 
-    return fig
+    return(fig)
 
-def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool): 
+def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool, direction: str = "below"): 
     '''
     Filter to remove endpoints with low correlation score thresholds.
 
@@ -318,7 +320,10 @@ def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool):
 
     diagnostic_plot
         A boolean to determine whether to make a diagnostic plot if apply is False. Default is False.
-    
+
+    direction
+        Whether the removed data should be "below" or "above" the threshold. Users may also specify
+        "between" where values are removed between the threshold and -1 * the threshold.
     '''
 
     ##################
@@ -379,8 +384,15 @@ def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool):
     # Set the filter to leep
     CorScore["Filter"] = "Keep"
 
-    # Filter cases with less than 0.2 as their correlation score
-    CorScore.loc[CorScore["Spearman"] < score, "Filter"] = "Remove"
+    # Filter cases dependent on the user specified threshold (score) and direction (default is below)
+    if direction == "below":
+        CorScore.loc[CorScore["Spearman"] < score, "Filter"] = "Remove"
+    elif direction == "above":
+        CorScore.loc[CorScore["Spearman"] > score, "Filter"] = "Remove"
+    elif direction == "between":
+        CorScore.loc[((CorScore["Spearman"] > abs(score)) & (CorScore["Spearman"] < -1 * abs(score))), "Filter"] = "Remove"
+    else:
+        raise ValueError(print(direction, " is not recognized as a valid input for direction. Currently only 'below', 'above', or 'between' are accepted."))
 
     # Add correlation summary object to object
     self.filter_correlation_score_df = CorScore
