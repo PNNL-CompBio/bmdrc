@@ -5,8 +5,6 @@ from abc import abstractmethod
 from .preprocessing import remove_endpoints
 from .filtering import min_concentration, correlation_score
 
-
-
 __author__ = "David Degnan"
 
 class ContinuousClass():
@@ -51,6 +49,8 @@ class ContinuousClass():
     @abstractmethod
     def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False, direction = "below"):
         correlation_score(self, score, apply, diagnostic_plot, direction)
+
+    
 
     #####################
     ## INIT DEFINITION ##

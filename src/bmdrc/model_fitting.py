@@ -675,7 +675,7 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
 
         # Calculate P-Value Function
         def calc_p_value(PredictedValues, Params):
-            '''Return a p-value of model fit for each unique ID and Model dataframe pairing'''
+            '''Return a p-value of model fit (Goodness of Fit) for each unique ID and Model dataframe pairing'''
 
             # Get the experimental values 
             ExperimentalValues = sub_data["bmdrc.frac.affected"].tolist()
@@ -1024,7 +1024,7 @@ def _calc_fit_statistics(self):
         Data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == id]
         
         # Get the AUC, min, and max dose 
-        AUC = np.trapz(Data["bmdrc.frac.affected"], x = Data[self.concentration])
+        AUC = np.trapezoid(Data["bmdrc.frac.affected"], x = Data[self.concentration])
         Min_Dose = round(min(Data[self.concentration]), 4)
         Max_Dose = round(max(Data[self.concentration]), 4)
 
