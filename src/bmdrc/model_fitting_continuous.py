@@ -83,8 +83,29 @@ class Continuous_Model():
         self.aic = aic
 
     @abstractmethod
-    def get_response_level(self):
-        return None
+    def get_response_level(self, percentage: float):
+        '''
+        Calculate the y value (Response) at a percentage
+
+        Parameters
+        ----------
+        percentage
+            the percentage of the response, where 10 means 10%
+
+        Returns
+        -------
+        the actual response value at that percentage
+        '''
+
+        # Check for y_pred
+        if self.y_pred is None:
+            raise TypeError("Please run the .fit() function first to get a response level.")
+        
+        # Pull out the increments
+        increment = (np.max(self.y_pred) - np.min(self.y_pred)) / 100
+
+        # Return the predicted value
+        return np.min(self.y_pred) + (increment * percentage)
 
     ## Attributes used by all models ##
 
@@ -101,8 +122,26 @@ class Continuous_Model():
 ## Linear Regression ##
 class LinReg_Cont(Continuous_Model):
 
-    def predict_x(self):
-        return None
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+
+        # The params attributes are needed
+        if self.params is None:
+            raise TypeError("Please run the .fit() function first to get a response level.")
+        
+        # Return the estimate 
+        return y / self.params[0]
 
     def fit(self, fixed_intercept = 0):
         '''
@@ -112,7 +151,14 @@ class LinReg_Cont(Continuous_Model):
         ----------
         fixed_intercept
             a value that the the model must run through
+        
+        Returns
+        ------
+        the fitted model, parameters, y_pred, GOF p-value, and AIC. All return in the object.
         '''
+
+        # Save the selected fixed_intercept
+        self.fixed_intercept = fixed_intercept
 
         # Extract out the values
         x = self._toModel[self._concentration].to_numpy()
@@ -133,3 +179,4 @@ class LinReg_Cont(Continuous_Model):
 
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
+
