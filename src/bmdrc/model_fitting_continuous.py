@@ -3,13 +3,15 @@ from abc import abstractmethod
 
 from scipy.stats import chi2
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
 import numpy as np
 
 ############################
 ## CLASSES FOR MODEL FITS ##
 ############################
 
-## General Functions ##
+## General Class Function ##
 class Continuous_Model():
         
     ## Methods which do not change per model ##
@@ -189,3 +191,77 @@ class LinReg_Cont(Continuous_Model):
 
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
+
+    ## Quadratic, Cubic, and Quartic Regression ##
+    class PolyReg_Cont(Continuous_Model):
+        
+        def predict_x(self, y):
+            '''
+            Predict the value of x (Dose) to achieve a specific Y (Response)
+
+            Parameters
+            ----------
+            y
+                the continuous response variable
+
+            Returns
+            -------
+            an estimate of the x (Dose) at that response        
+            '''
+
+            # The params attributes are needed
+            if self.params is None:
+                raise TypeError("Please run the .fit() function first to get a response level.")
+            
+            # Calculate the roots with numpy
+
+
+        def fit(self, fixed_intercept: float = 0):
+            '''
+            Fit a polynomial regression model, calculate GOF and AIC
+
+            Parameters
+            ----------
+            fixed_intercept
+                a value that the the model must run through
+            
+            Returns
+            ------
+            the fitted model, parameters, y_pred, GOF p-value, and AIC. All return in the object.
+            '''
+
+            # Save the selected fixed_intercept
+            self.fixed_intercept = fixed_intercept
+
+            # Extract out the values
+            x = self._toModel[self._concentration].to_numpy()
+            y = self._toModel[self._response].to_numpy()
+
+            # Adjust by intercept
+            y = [val - fixed_intercept for val in y]
+
+            # Fit linear model without intercept and without the additional fits (include_bias - no need for intercept term)
+            model = make_pipeline(PolynomialFeatures(self.degree, include_bias = False), LinearRegression(fit_intercept = False))
+            model.fit(x.reshape(-1, 1), y)
+            self.model = model
+            self.y_pred = model.predict(x.reshape(-1, 1)) + fixed_intercept
+            self.params = model.named_steps["linearregression"].coef_
+
+            # Get the GOF value
+            self.gof_p_value(y, self.y_pred, self.params)
+
+            # Get the AIC value
+            self.calculate_aic(y, self.y_pred, self.params)
+
+        # Expand the init function definition to include the degree of the polynomial
+        def __init__(self, toModel, concentration, response, degree):
+            
+            # toModel, concentration, and response have already been calculated in another function
+            super().__init__(toModel, concentration, response)
+            self.degree = degree
+
+        degree = property(operator.attrgetter('_degree'))
+
+        @degree.setter
+        def degree(self, degree_val):
+            self._degree = degree_val
