@@ -213,8 +213,11 @@ class LinReg_Cont(Continuous_Model):
             if self.params is None:
                 raise TypeError("Please run the .fit() function first to get a response level.")
             
-            # Calculate the roots with numpy
+            # Calculate the roots with numpy - step 1: format
+            ordered_params = np.append(np.flip(self.params), y - self.fixed_intercept)
 
+            # Calculate the roots with numpy - step 2: pass to function
+            return np.roots(ordered_params)
 
         def fit(self, fixed_intercept: float = 0):
             '''
