@@ -20,8 +20,8 @@ def benchmark_dose(self, path: str):
     ## Flag meanings:
     ## 0 - failed minimum concentration filter
     ## 1 - failed other filter
-    ## 2 - Passes all filters, p-value on spearman above 0.32
-    ## 4 - Passes all filters, p-value on spearman below or equal to 0.32
+    ## 2 - Passes all filters, p-value on GOF
+    ## 4 - Passes all filters, p-value on GOF below or equal to 0.32
 
     BMDS = self.bmds
 

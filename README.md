@@ -46,7 +46,7 @@ A phenotype being measured in response to a **chemical** exposure is called an *
 
 - *LPRClass* In the `LPRClass`, larval photomotor response data can be converted to dichotomous as described in [Thomas et al 2019](https://www.sciencedirect.com/science/article/pii/S2468111318300732). Data must be in long format and contain the following columns: chemical, plate, well, concentration, time, and value. Users must specify the time between cycles, the cooldown time between cycles, and whether to start with a light or dark cycle. If this format does not fit your data nicely, please report it to the issues tab. See a full pipeline demo [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/vignettes/LPR%20Class%20Example.ipynb)
 
-Available Models: logistic, gamma, Weibull, log logistic, probit, log probit, multistage, quantal linear
+Available Models: gamma, log logistic, log probit, logistic, multistage, probit, quantal linear, Weibull
 
 **Continuous Data**
 

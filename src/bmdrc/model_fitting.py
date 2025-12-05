@@ -1072,7 +1072,7 @@ def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selec
     # GOF threshold must be greater than 0 or less than 1
     if gof_threshold < 0 or gof_threshold > 1:
         print("gof_threshold must be larger than 0 or less than 1.")
-        gof_threshold = 0.2
+        gof_threshold = 0.1
     
     # Assert that model_selection is "lowest BMDL"
     if (model_selection != "lowest BMDL"):
