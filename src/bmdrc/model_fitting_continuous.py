@@ -5,7 +5,6 @@ from scipy.stats import chi2
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
-
 ############################
 ## CLASSES FOR MODEL FITS ##
 ############################
@@ -16,7 +15,7 @@ class Continuous_Model():
     ## Methods which do not change per model ##
 
     @abstractmethod
-    def gof_p_value(self, y_obs: np.array[np.float64], y_pred: np.array[np.float64], params: np.array[np.float64]):
+    def gof_p_value(self, y_obs: np.array, y_pred: np.array, params: np.array):
         '''
         Return a p-value of model fit (Goodness of Fit) for a fit dataset
         
@@ -47,7 +46,7 @@ class Continuous_Model():
         self.p_value = p_value
     
     @abstractmethod
-    def calculate_aic(self, y_obs: np.array[np.float64], y_pred: np.array[np.float64], params: np.array[np.float64]):
+    def calculate_aic(self, y_obs: np.array, y_pred: np.array, params: np.array):
         '''
         Returns an AIC (Akaike Information Criterion) value for a fit dataset
         
@@ -118,6 +117,17 @@ class Continuous_Model():
     concentration = property(operator.attrgetter('_concentration'))
     response = property(operator.attrgetter('_response'))
 
+    @toModel.setter
+    def toModel(self, theModelData):
+        self._toModel = theModelData
+
+    @concentration.setter
+    def concentration(self, concentrationname):
+        self._concentration = concentrationname
+
+    @response.setter
+    def response(self, responsename):
+        self._response = responsename
 
 ## Linear Regression ##
 class LinReg_Cont(Continuous_Model):
@@ -141,9 +151,9 @@ class LinReg_Cont(Continuous_Model):
             raise TypeError("Please run the .fit() function first to get a response level.")
         
         # Return the estimate 
-        return y / self.params[0]
+        return (y - self.fixed_intercept) / self.params[0]
 
-    def fit(self, fixed_intercept = 0):
+    def fit(self, fixed_intercept: float = 0):
         '''
         Fit a linear regression model, calculate GOF and AIC
 
@@ -179,4 +189,3 @@ class LinReg_Cont(Continuous_Model):
 
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
-
