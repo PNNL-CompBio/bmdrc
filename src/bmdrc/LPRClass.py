@@ -8,6 +8,8 @@ import pandas as pd
 from .BinaryClass import BinaryClass, DataClass
 
 
+import ipdb
+
 class LPRClass(DataClass):
     """
     Generates a bmdrc object from larval photomotor response data, which must be in long format.
@@ -345,37 +347,24 @@ class LPRClass(DataClass):
                 how="left",
             )
 
-            # Sore calculate aucs
-            store_aucs.append(
-                [
-                    to_calc_auc["dark"][x] - to_calc_auc["light"][x]
-                    for x in range(len(to_calc_auc))
-                ]
-            )
+            # Calculate aucs and store
+            to_calc_auc["Cycle"] = "AUC" + str(cycle_num)
+            to_calc_auc["AUC"] = to_calc_auc["dark"] - to_calc_auc["light"]
+            store_aucs.append(to_calc_auc)
 
-        # Convert to a data.frame
-        auc_values = pd.DataFrame(store_aucs).transpose()
+        # Concatenate
+        auc_values = pd.concat(store_aucs).drop_duplicates().dropna()
 
-        # Rename columns
-        for name in auc_values.columns:
-            new_name = "AUC" + str(int(name) + 1)
-            auc_values.rename(columns={name: new_name}, inplace=True)
-
-        # Add additional columns that are needed
-        auc_process = pd.concat(
-            [
-                cycles[
-                    [self._chemical, self._concentration, self._plate, self._well]
-                ].drop_duplicates(),
-                auc_values,
-            ],
-            axis=1,
-        )
+        # Pivot wider
+        auc_process = auc_values[[self._chemical, self._plate, self._concentration, self._well, "Cycle", "AUC"]].pivot(index=[self._chemical, self._plate, self._concentration, self._well], columns="Cycle", values="AUC").reset_index()
 
         # Convert to dichotomous
         for x in range(self._max_cycle):
             value = "AUC" + str(x + 1)
             auc_process[value] = self.to_dichotomous(auc_process, value)
+
+        # Return AUC
+        return auc_process
 
         # Return AUC
         return auc_process
@@ -430,32 +419,16 @@ class LPRClass(DataClass):
                 .drop([self._time, "cycle"], axis=1),
             )
 
-            # Store calculated MOVs
-            store_movs.append(
-                [
-                    to_calc_mov["dark"][x] - to_calc_mov["light"][x]
-                    for x in range(len(to_calc_mov))
-                ]
-            )
+            # Calculate aucs and store
+            to_calc_mov["Cycle"] = "MOV" + str(x+1)
+            to_calc_mov["MOV"] = to_calc_mov["dark"] - to_calc_mov["light"]
+            store_movs.append(to_calc_mov)
 
-        # Make data.frame
-        mov_values = pd.DataFrame(store_movs).transpose()
+        # Concatenate
+        mov_values = pd.concat(store_movs).drop_duplicates().dropna()
 
-        # Rename columns
-        for name in mov_values.columns:
-            new_name = "MOV" + str(int(name) + 1)
-            mov_values.rename(columns={name: new_name}, inplace=True)
-
-        # Add additional columns that are needed
-        mov_process = pd.concat(
-            [
-                cycles[
-                    [self._chemical, self._concentration, self._plate, self._well]
-                ].drop_duplicates(),
-                mov_values,
-            ],
-            axis=1,
-        )
+        # Pivot wider
+        mov_process = mov_values[[self._chemical, self._plate, self._concentration, self._well, "Cycle", "MOV"]].pivot(index=[self._chemical, self._plate, self._concentration, self._well], columns="Cycle", values="MOV").reset_index()
 
         # Convert to dichotomous
         for x in range(self._max_cycle):
