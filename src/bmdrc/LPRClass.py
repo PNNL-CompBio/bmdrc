@@ -7,9 +7,6 @@ import pandas as pd
 
 from .BinaryClass import BinaryClass, DataClass
 
-
-import ipdb
-
 class LPRClass(DataClass):
     """
     Generates a bmdrc object from larval photomotor response data, which must be in long format.
