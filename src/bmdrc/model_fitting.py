@@ -1141,7 +1141,7 @@ def _curve_plot(self, to_model, curve, chemical_name, endpoint_name, model):
 
 def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str, steps: int):
     '''
-    Generate the x and y coordinates of a specific curve, and optionally a plot 
+    Generate the x and y coordinates of a specific curve and a plot, which are stored as object attributes
 
     Parameters
     ----------

@@ -6,6 +6,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 import numpy as np
+import pandas as pd
 
 ############################
 ## CLASSES FOR MODEL FITS ##
@@ -107,6 +108,27 @@ class Continuous_Model():
 
         # Return the predicted value
         return np.min(self.y_pred) + (increment * percentage)
+    
+    def gen_uneven_spacing(self, doses: list[str], int_steps: int = 10):
+        '''
+        Support function to calculate inbetween concentration measurements
+        
+        Parameters
+        ----------
+        doses
+            a list of doses, typically ranging from the min to the max dose, inclusive
+
+        int_steps
+            define the number of measurements between doses
+
+        Returns
+        -------
+        a vector of values with `int_step` number of doses between measurements
+        '''
+        dose_samples = list()
+        for dose_index in range(len(doses) - 1):
+            dose_samples.extend(np.linspace(doses[dose_index],doses[dose_index + 1], int_steps).tolist())
+        return np.unique(dose_samples)
 
     ## Attributes used by all models ##
 
@@ -133,27 +155,6 @@ class Continuous_Model():
 
 ## Linear Regression ##
 class LinReg_Cont(Continuous_Model):
-
-    def predict_x(self, y):
-        '''
-        Predict the value of x (Dose) to achieve a specific Y (Response)
-
-        Parameters
-        ----------
-        y
-            the continuous response variable
-
-        Returns
-        -------
-        an estimate of the x (Dose) at that response        
-        '''
-
-        # The params attributes are needed
-        if self.params is None:
-            raise TypeError("Please run the .fit() function first to get a response level.")
-        
-        # Return the estimate 
-        return (y - self.fixed_intercept) / self.params[0]
 
     def fit(self, fixed_intercept: float = 0):
         '''
@@ -192,79 +193,118 @@ class LinReg_Cont(Continuous_Model):
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
 
-    ## Quadratic, Cubic, and Quartic Regression ##
-    class PolyReg_Cont(Continuous_Model):
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+
+        # The params attributes are needed
+        if self.params is None:
+            raise TypeError("Please run the .fit() function first to get a response level.")
         
-        def predict_x(self, y):
-            '''
-            Predict the value of x (Dose) to achieve a specific Y (Response)
+        # Return the estimate 
+        return (y - self.fixed_intercept) / self.params[0]
+    
+    def response_curve(self, steps = 10):
+        '''Create a response curve'''
 
-            Parameters
-            ----------
-            y
-                the continuous response variable
+        # Determine x values to use
+        dose_x_vals = np.round(self.gen_uneven_spacing(self._toModel[self._concentration].tolist(), int_steps = steps), 4)
 
-            Returns
-            -------
-            an estimate of the x (Dose) at that response        
-            '''
+        # Define curve and its columns
+        curve = pd.DataFrame([dose_x_vals, self.model.predict(dose_x_vals.reshape(-1, 1))]).T
+        curve.columns = ["Dose in uM", "Response"]
+        curve["Response"] = curve["Response"] + self.fixed_intercept
+        
+        # Save the curve
+        self.curve = curve
 
-            # The params attributes are needed
-            if self.params is None:
-                raise TypeError("Please run the .fit() function first to get a response level.")
-            
-            # Calculate the roots with numpy - step 1: format
-            ordered_params = np.append(np.flip(self.params), y - self.fixed_intercept)
+## Quadratic, Cubic, and Quartic Regression ##
+class PolyReg_Cont(Continuous_Model):
+    
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
 
-            # Calculate the roots with numpy - step 2: pass to function
-            return np.roots(ordered_params)
+        Parameters
+        ----------
+        y
+            the continuous response variable
 
-        def fit(self, fixed_intercept: float = 0):
-            '''
-            Fit a polynomial regression model, calculate GOF and AIC
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
 
-            Parameters
-            ----------
-            fixed_intercept
-                a value that the the model must run through
-            
-            Returns
-            ------
-            the fitted model, parameters, y_pred, GOF p-value, and AIC. All return in the object.
-            '''
+        # The params attributes are needed
+        if self.params is None:
+            raise TypeError("Please run the .fit() function first to get a response level.")
+        
+        # Calculate the roots with numpy - step 1: format
+        ordered_params = np.append(np.flip(self.params), y - self.fixed_intercept)
 
-            # Save the selected fixed_intercept
-            self.fixed_intercept = fixed_intercept
+        # Calculate the roots with numpy - step 2: pass to function
+        return np.roots(ordered_params)
 
-            # Extract out the values
-            x = self._toModel[self._concentration].to_numpy()
-            y = self._toModel[self._response].to_numpy()
+    def fit(self, fixed_intercept: float = 0):
+        '''
+        Fit a polynomial regression model, calculate GOF and AIC
 
-            # Adjust by intercept
-            y = [val - fixed_intercept for val in y]
+        Parameters
+        ----------
+        fixed_intercept
+            a value that the the model must run through
+        
+        Returns
+        ------
+        the fitted model, parameters, y_pred, GOF p-value, and AIC. All return in the object.
+        '''
 
-            # Fit linear model without intercept and without the additional fits (include_bias - no need for intercept term)
-            model = make_pipeline(PolynomialFeatures(self.degree, include_bias = False), LinearRegression(fit_intercept = False))
-            model.fit(x.reshape(-1, 1), y)
-            self.model = model
-            self.y_pred = model.predict(x.reshape(-1, 1)) + fixed_intercept
-            self.params = model.named_steps["linearregression"].coef_
+        # Save the selected fixed_intercept
+        self.fixed_intercept = fixed_intercept
 
-            # Get the GOF value
-            self.gof_p_value(y, self.y_pred, self.params)
+        # Extract out the values
+        x = self._toModel[self._concentration].to_numpy()
+        y = self._toModel[self._response].to_numpy()
 
-            # Get the AIC value
-            self.calculate_aic(y, self.y_pred, self.params)
+        # Adjust by intercept
+        y = [val - fixed_intercept for val in y]
 
-        # Expand the init function definition to include the degree of the polynomial
-        def __init__(self, toModel, concentration, response, degree):
-            
-            # toModel, concentration, and response have already been calculated in another function
-            super().__init__(toModel, concentration, response)
-            self.degree = degree
+        # Fit linear model without intercept and without the additional fits (include_bias - no need for intercept term)
+        model = make_pipeline(PolynomialFeatures(self.degree, include_bias = False), LinearRegression(fit_intercept = False))
+        model.fit(x.reshape(-1, 1), y)
+        self.model = model
+        self.y_pred = model.predict(x.reshape(-1, 1)) + fixed_intercept
+        self.params = model.named_steps["linearregression"].coef_
 
-        degree = property(operator.attrgetter('_degree'))
+        # Get the GOF value
+        self.gof_p_value(y, self.y_pred, self.params)
 
-        @degree.setter
-        def degree(self, degree_val):
-            self._degree = degree_val
+        # Get the AIC value
+        self.calculate_aic(y, self.y_pred, self.params)
+
+    # Expand the init function definition to include the degree of the polynomial
+    def __init__(self, toModel, concentration, response, degree):
+        
+        # toModel, concentration, and response have already been calculated in another function
+        super().__init__(toModel, concentration, response)
+        self.degree = degree
+
+    degree = property(operator.attrgetter('_degree'))
+
+    @degree.setter
+    def degree(self, degree_val):
+        self._degree = degree_val
+
+
+
+
