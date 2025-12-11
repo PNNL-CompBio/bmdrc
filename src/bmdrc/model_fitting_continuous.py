@@ -190,7 +190,7 @@ class Continuous_Model():
         self._response = responsename
 
 ## Linear Regression ##
-class LinReg_Cont(Continuous_Model)
+class LinReg_Cont(Continuous_Model):
 
     def fit(self, fixed_intercept: float = 0):
         '''
@@ -267,30 +267,6 @@ class LinReg_Cont(Continuous_Model)
 ## Quadratic, Cubic, and Quartic Regression ##
 class PolyReg_Cont(Continuous_Model):
     
-    def predict_x(self, y):
-        '''
-        Predict the value of x (Dose) to achieve a specific Y (Response)
-
-        Parameters
-        ----------
-        y
-            the continuous response variable
-
-        Returns
-        -------
-        an estimate of the x (Dose) at that response        
-        '''
-
-        # The params attributes are needed
-        if self.params is None:
-            raise TypeError("Please run the .fit() function first to get a response level.")
-        
-        # Calculate the roots with numpy - step 1: format
-        ordered_params = np.append(np.flip(self.params), y - self.fixed_intercept)
-
-        # Calculate the roots with numpy - step 2: pass to function
-        return np.roots(ordered_params)
-
     def fit(self, fixed_intercept: float = 0):
         '''
         Fit a polynomial regression model, calculate GOF and AIC
@@ -327,6 +303,44 @@ class PolyReg_Cont(Continuous_Model):
 
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
+
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+
+        # The params attributes are needed
+        if self.params is None:
+            raise TypeError("Please run the .fit() function first to get a response level.")
+        
+        # Calculate the roots with numpy - step 1: format
+        ordered_params = np.append(np.flip(self.params), y - self.fixed_intercept)
+
+        # Calculate the roots with numpy - step 2: pass to function
+        return np.roots(ordered_params)
+    
+    def response_curve(self, steps = 10):
+        '''Create a response curve'''
+
+        # Determine x values to use
+        dose_x_vals = np.round(self.gen_uneven_spacing(self._toModel[self._concentration].tolist(), int_steps = steps), 4)
+
+        # Define curve and its columns
+        curve = pd.DataFrame([dose_x_vals, self.model.predict(dose_x_vals.reshape(-1, 1))]).T
+        curve.columns = ["Dose in uM", "Response"]
+        curve["Response"] = curve["Response"] + self.fixed_intercept
+        
+        # Save the curve
+        self.curve = curve
 
     # Expand the init function definition to include the degree of the polynomial
     def __init__(self, toModel, concentration, response, degree):
