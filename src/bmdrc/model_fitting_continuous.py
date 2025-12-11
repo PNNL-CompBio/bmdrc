@@ -2,6 +2,7 @@ import operator
 from abc import abstractmethod
 
 from scipy.stats import chi2
+from scipy import stats
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
@@ -109,6 +110,41 @@ class Continuous_Model():
         # Return the predicted value
         return np.min(self.y_pred) + (increment * percentage)
     
+    @abstractmethod
+    def calc_conf_interv(self):
+        '''
+        Calculate a 95% confidence interval
+
+        Returns
+        -------
+        a data.frame called "confidence.interval" store as "CI"
+        '''
+
+        # Build a statistical summary data.frame to calculate confidence intervals. SEM - standard error measurement (sd / sqrt(n))
+        stats_sum = self._toModel[[self._concentration, self._response]].groupby(self._concentration).agg(["mean", "sem", "size"]).reset_index()
+        stats_sum.columns = [self._concentration, "mean", "sem", "dof"]
+
+        # Subtract one for the DoF
+        stats_sum["dof"] = stats_sum["dof"] - 1
+
+        # Store low/high variables 
+        Low = []
+        High = []
+
+        # Iterate through and calculate confidence intervals
+        for x in range(len(stats_sum)):
+            CI = stats.t.interval(0.95, stats_sum["dof"][x], loc = stats_sum["mean"][x], scale = stats_sum["sem"][x])
+            Low.append(np.round(CI[0], 4))
+            High.append(np.round(CI[1], 4))
+
+        # Add the low and high 
+        stats_sum["Low"] = Low
+        stats_sum["High"] = High
+
+        # Return confidence intervals
+        self.CI = stats_sum
+            
+    @abstractmethod
     def gen_uneven_spacing(self, doses: list[str], int_steps: int = 10):
         '''
         Support function to calculate inbetween concentration measurements
@@ -154,7 +190,7 @@ class Continuous_Model():
         self._response = responsename
 
 ## Linear Regression ##
-class LinReg_Cont(Continuous_Model):
+class LinReg_Cont(Continuous_Model)
 
     def fit(self, fixed_intercept: float = 0):
         '''
