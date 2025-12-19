@@ -572,3 +572,34 @@ class PowReg_Cont(GenReg_Cont):
         '''
         # return ((y-100)/a)^1/b
         return ((y-self.fixed_intercept)/self.params[0])**(1/self.params[1])
+    
+## Weibull Regression
+class WeiReg_Cont(GenReg_Cont):
+
+    # Update the model equation
+    def model_equation(self, x, a, b, c):
+        '''Internal function to fit the curve'''
+        return self.fixed_intercept + (a * (1 - np.exp(-(x / b)**c)))
+    
+    # Update the x prediction
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+
+        a = self.params[0]
+        b = self.params[1]
+        c = self.params[2]
+
+        # return b(-ln(1-(y-100)/a))^1/c
+        p1 = 1 - ((y - self.fixed_intercept) / a)
+        return b * (-1 * np.log(p1))**(1/c)
