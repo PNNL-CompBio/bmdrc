@@ -493,7 +493,7 @@ class ExpReg_Cont(GenReg_Cont):
         # return (ln(y - 100) / a) / b
         return (np.log(y - self.fixed_intercept) / (self.params[0] + 1)) / self.params[1]
     
-    ## Exponential Regression ## 
+## Exponential Regression ## 
 class ExpReg_Cont(GenReg_Cont):
 
     # Update the model equation
@@ -515,8 +515,32 @@ class ExpReg_Cont(GenReg_Cont):
         -------
         an estimate of the x (Dose) at that response        
         '''
-        # return (ln(y - 100) / a) / b
+        # return ln((y - 100 / a) + 1) / b
         return np.log(((y - self.fixed_intercept) / self.params[0]) + 1) / self.params[1]
 
+## Gompertz Regression ##
+class GomReg_Cont(GenReg_Cont):
+
+    # Update the model equation
+    def model_equation(self, x, a, b, c):
+        '''Internal function to fit the curve'''
+        return self.fixed_intercept + a * np.exp(-1 * b * np.exp(-1 * c * x))
+    
+    # Update the x prediction
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+        # return -1/c * ln((ln((y-100)/a)) / -1*b)
+        return -1 / self.params[2] * np.log(np.log((y - 100) / self.params[0]) / (-1 * self.params[1]))
 
 
