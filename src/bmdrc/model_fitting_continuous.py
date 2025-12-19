@@ -499,8 +499,14 @@ class HillReg_Cont(GenReg_Cont):
         -------
         an estimate of the x (Dose) at that response        
         '''
-        # return (ln(y - 100) / a) / b
-        return (np.log(y - self.fixed_intercept) / (self.params[0] + 1)) / self.params[1]
+
+        # Calculate the y adjustment
+        yadj = (y - self.fixed_intercept) / self.vmax
+        a = self.params[0]
+        b = self.params[1]
+
+        # Return the value ((yadj * b^a) / (1 - yadj))^(1/a)
+        return ((yadj * b**a) / (1 - yadj))**(1/a)
     
     # Define the vmax value - the highest y value
     def __init__(self, toModel, concentration, response):
@@ -508,3 +514,61 @@ class HillReg_Cont(GenReg_Cont):
         # toModel, concentration, and response have already been calculated in another function
         super().__init__(toModel, concentration, response)
         self.vmax = np.max(toModel[response])
+
+## Michaelis-Mentin Regression ## 
+class MMReg_Cont(GenReg_Cont):
+
+    # Update the model equation
+    def model_equation(self, x, a, b):
+        '''Internal function to fit the curve'''
+        return self.fixed_intercept + ((self.vmax * x) / (a + x))
+    
+    # Update the x prediction
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+
+        # Return -(y-i)a / (y-i)-v
+        return (-1 * (y - self.fixed_intercept) * self.params[0]) / ((y - self.fixed_intercept) - self.vmax)
+    
+    # Define the vmax value - the highest y value
+    def __init__(self, toModel, concentration, response):
+        
+        # toModel, concentration, and response have already been calculated in another function
+        super().__init__(toModel, concentration, response)
+        self.vmax = np.max(toModel[response])
+
+## Power Regression ##
+class PowReg_Cont(GenReg_Cont):
+
+    # Update the model equation
+    def model_equation(self, x, a, b):
+        '''Internal function to fit the curve'''
+        return self.fixed_intercept +  a * x**b
+    
+    # Update the x prediction
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+        # return ((y-100)/a)^1/b
+        return ((y-self.fixed_intercept)/self.params[0])**(1/self.params[1])
