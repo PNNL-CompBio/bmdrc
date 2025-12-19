@@ -21,37 +21,6 @@ import pandas as pd
 class Continuous_Model():
         
     ## Methods which do not change per model ##
-
-    @abstractmethod
-    def gof_p_value(self, y_obs: np.array, y_pred: np.array, params: np.array):
-        '''
-        Return a p-value of model fit (Goodness of Fit) for a fit dataset
-        
-        Parameters
-        ----------
-        y_obs
-            the observed y (Response) variables as a numpy array
-        y_pred
-            the predicted y (Response) variables as a numpy array
-        params
-            a numpy array of the parameters
-
-        Returns
-        -------
-        a single p-value from the goodness of fit test stored in the object
-        
-        '''
-    
-        # Calculate the chi squared value
-        chi_squared = (((y_obs - y_pred)**2)).sum()
-        
-        # Degrees of freedom: Number of observations minus number of model parameters
-        dof = len(y_obs) - len(params)  
-        
-        # Calculate p-value
-        p_value = 1 - chi2.cdf(chi_squared, dof)
-        
-        self.p_value = p_value
     
     @abstractmethod
     def calculate_aic(self, y_obs: np.array, y_pred: np.array, params: np.array):
@@ -227,9 +196,6 @@ class LinReg_Cont(Continuous_Model):
         self.y_pred = model.predict(x.reshape(-1, 1)) + fixed_intercept
         self.params = model.coef_
 
-        # Get the GOF value
-        self.gof_p_value(y, self.y_pred, self.params)
-
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
 
@@ -312,9 +278,6 @@ class PolyReg_Cont(Continuous_Model):
         self.model = model
         self.y_pred = model.predict(x.reshape(-1, 1)) + fixed_intercept
         self.params = model.named_steps["linearregression"].coef_
-
-        # Get the GOF value
-        self.gof_p_value(y, self.y_pred, self.params)
 
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
@@ -414,9 +377,6 @@ class GenReg_Cont(Continuous_Model):
         self.y_pred = self.model_equation(x, *params)
         self.params = params
 
-        # Get the GOF value
-        self.gof_p_value(y, self.y_pred, self.params)
-
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
     
@@ -466,32 +426,6 @@ class AsyReg_Cont(GenReg_Cont):
         '''
         # return -1 / b * np.log(1 - ((y-100) / a))
         return -1 / self.params[1] * np.log(1 - ((y-self.fixed_intercept) / self.params[0]))
-
-
-## Exponential Regression ## 
-class ExpReg_Cont(GenReg_Cont):
-
-    # Update the model equation
-    def model_equation(self, x, a, b):
-        '''Internal function to fit the curve'''
-        return self.fixed_intercept + (a * (np.exp(b * x) - 1))
-    
-    # Update the x prediction
-    def predict_x(self, y):
-        '''
-        Predict the value of x (Dose) to achieve a specific Y (Response)
-
-        Parameters
-        ----------
-        y
-            the continuous response variable
-
-        Returns
-        -------
-        an estimate of the x (Dose) at that response        
-        '''
-        # return (ln(y - 100) / a) / b
-        return (np.log(y - self.fixed_intercept) / (self.params[0] + 1)) / self.params[1]
     
 ## Exponential Regression ## 
 class ExpReg_Cont(GenReg_Cont):
@@ -543,4 +477,34 @@ class GomReg_Cont(GenReg_Cont):
         # return -1/c * ln((ln((y-100)/a)) / -1*b)
         return -1 / self.params[2] * np.log(np.log((y - 100) / self.params[0]) / (-1 * self.params[1]))
 
+## Hill Regression ## 
+class HillReg_Cont(GenReg_Cont):
 
+    # Update the model equation
+    def model_equation(self, x, a, b):
+        '''Internal function to fit the curve'''
+        return self.fixed_intercept + ((self.vmax * (x**a)) / (b**a + x**a))
+    
+    # Update the x prediction
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+        # return (ln(y - 100) / a) / b
+        return (np.log(y - self.fixed_intercept) / (self.params[0] + 1)) / self.params[1]
+    
+    # Define the vmax value - the highest y value
+    def __init__(self, toModel, concentration, response):
+        
+        # toModel, concentration, and response have already been calculated in another function
+        super().__init__(toModel, concentration, response)
+        self.vmax = np.max(toModel[response])
