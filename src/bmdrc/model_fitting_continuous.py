@@ -1,8 +1,12 @@
 import operator
 from abc import abstractmethod
 
+import warnings
+warnings.filterwarnings("ignore")
+
 from scipy.stats import chi2
 from scipy import stats
+from scipy.optimize import curve_fit
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
@@ -199,7 +203,7 @@ class LinReg_Cont(Continuous_Model):
         Parameters
         ----------
         fixed_intercept
-            a value that the the model must run through
+            a value that the the modeled line must run through
         
         Returns
         ------
@@ -251,7 +255,18 @@ class LinReg_Cont(Continuous_Model):
         return (y - self.fixed_intercept) / self.params[0]
     
     def response_curve(self, steps = 10):
-        '''Create a response curve'''
+        '''
+        Create a response curve
+        
+        Parameters
+        ----------
+        steps
+            the number of modeled points inbetween existing points
+        
+        Returns
+        -------
+        a curve pandas DataFrame with the Dose and Response
+        '''
 
         # Determine x values to use
         dose_x_vals = np.round(self.gen_uneven_spacing(self._toModel[self._concentration].tolist(), int_steps = steps), 4)
@@ -274,7 +289,7 @@ class PolyReg_Cont(Continuous_Model):
         Parameters
         ----------
         fixed_intercept
-            a value that the the model must run through
+            a value that the the modeled line must run through
         
         Returns
         ------
@@ -325,11 +340,26 @@ class PolyReg_Cont(Continuous_Model):
         # Calculate the roots with numpy - step 1: format
         ordered_params = np.append(np.flip(self.params), y - self.fixed_intercept)
 
-        # Calculate the roots with numpy - step 2: pass to function
-        return np.roots(ordered_params)
+        # Calculate the roots with numpy - step 2: use np roots
+        roots = np.roots(ordered_params)
+
+        # Calculate the roots with numpy - step 3: find the smallest non-negative/non-zero root
+        smallest_root = np.min([root for root in roots if root > 0])
+        return smallest_root
     
     def response_curve(self, steps = 10):
-        '''Create a response curve'''
+        '''
+        Create a response curve
+        
+        Parameters
+        ----------
+        steps
+            the number of modeled points inbetween existing points
+        
+        Returns
+        -------
+        a curve pandas DataFrame with the Dose and Response
+        '''
 
         # Determine x values to use
         dose_x_vals = np.round(self.gen_uneven_spacing(self._toModel[self._concentration].tolist(), int_steps = steps), 4)
@@ -355,6 +385,138 @@ class PolyReg_Cont(Continuous_Model):
     def degree(self, degree_val):
         self._degree = degree_val
 
+## General Non-Linear Regression ## 
+class GenReg_Cont(Continuous_Model):
+
+    def fit(self, fixed_intercept: float = 0):
+        '''
+        Fit a asymptotic regression model, calculate GOF and AIC
+
+        Parameters
+        ----------
+        fixed_intercept
+            a value that the the modeled line must run through
+        
+        Returns
+        ------
+        the fitted model, parameters, y_pred, GOF p-value, and AIC. All return in the object.
+        '''
+
+        # Save the selected fixed_intercept
+        self.fixed_intercept = fixed_intercept
+
+        # Extract out the values
+        x = self._toModel[self._concentration].to_numpy()
+        y = self._toModel[self._response].to_numpy()
+        
+        # Fit curve - there is no model object to keep
+        params, _ = curve_fit(self.model_equation, x, y)
+        self.y_pred = self.model_equation(x, *params)
+        self.params = params
+
+        # Get the GOF value
+        self.gof_p_value(y, self.y_pred, self.params)
+
+        # Get the AIC value
+        self.calculate_aic(y, self.y_pred, self.params)
+    
+    def response_curve(self, steps = 10):
+        '''
+        Create a response curve
+        
+        Parameters
+        ----------
+        steps
+            the number of modeled points inbetween existing points
+        
+        Returns
+        -------
+        a curve pandas DataFrame with the Dose and Response
+        '''
+
+        # Determine x values to use
+        dose_x_vals = np.round(self.gen_uneven_spacing(self._toModel[self._concentration].tolist(), int_steps = steps), 4)
+
+        # Define curve and its columns
+        curve = pd.DataFrame({"Dose in uM": dose_x_vals, "Response": [self.model_equation(the_x, *self.params) for the_x in dose_x_vals]})
+        
+        # Save the curve
+        self.curve = curve
+
+## Asymptotic Regression ##
+class AsyReg_Cont(GenReg_Cont):
+
+    # Define the model fitting function based on the fixed intercept
+    def model_equation(self, x, a, b):
+        '''Internal function to fit the curve'''
+        return self.fixed_intercept + a * (1 - np.exp(-b * x))
+    
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+        # return -1 / b * np.log(1 - ((y-100) / a))
+        return -1 / self.params[1] * np.log(1 - ((y-self.fixed_intercept) / self.params[0]))
+
+
+## Exponential Regression ## 
+class ExpReg_Cont(GenReg_Cont):
+
+    # Update the model equation
+    def model_equation(self, x, a, b):
+        '''Internal function to fit the curve'''
+        return self.fixed_intercept + (a * (np.exp(b * x) - 1))
+    
+    # Update the x prediction
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+        # return (ln(y - 100) / a) / b
+        return (np.log(y - self.fixed_intercept) / (self.params[0] + 1)) / self.params[1]
+    
+    ## Exponential Regression ## 
+class ExpReg_Cont(GenReg_Cont):
+
+    # Update the model equation
+    def model_equation(self, x, a, b):
+        '''Internal function to fit the curve'''
+        return self.fixed_intercept + (a * (np.exp(b * x) - 1))
+    
+    # Update the x prediction
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+        # return (ln(y - 100) / a) / b
+        return np.log(((y - self.fixed_intercept) / self.params[0]) + 1) / self.params[1]
 
 
 
