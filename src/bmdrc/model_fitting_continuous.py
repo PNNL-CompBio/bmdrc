@@ -10,6 +10,9 @@ from scipy.optimize import curve_fit
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
+from uncertainties import correlated_values
+import uncertainties.unumpy as unp 
+
 import numpy as np
 import pandas as pd
 
@@ -245,6 +248,109 @@ class LinReg_Cont(Continuous_Model):
         # Save the curve
         self.curve = curve
 
+## Quadratic, Cubic, and Quartic Regression ##
+class PolyReg_Cont(Continuous_Model):
+    
+    def fit(self, fixed_intercept: float = 0):
+        '''
+        Fit a polynomial regression model, calculate GOF and AIC
+
+        Parameters
+        ----------
+        fixed_intercept
+            a value that the the modeled line must run through
+        
+        Returns
+        ------
+        the fitted model, parameters, y_pred, GOF p-value, and AIC. All return in the object.
+        '''
+
+        # Save the selected fixed_intercept
+        self.fixed_intercept = fixed_intercept
+
+        # Extract out the values
+        x = self._toModel[self._concentration].to_numpy()
+        y = self._toModel[self._response].to_numpy()
+
+        # Adjust by intercept
+        y = [val - fixed_intercept for val in y]
+
+        # Fit linear model without intercept and without the additional fits (include_bias - no need for intercept term)
+        model = make_pipeline(PolynomialFeatures(self.degree, include_bias = False), LinearRegression(fit_intercept = False))
+        model.fit(x.reshape(-1, 1), y)
+        self.model = model
+        self.y_pred = model.predict(x.reshape(-1, 1)) + fixed_intercept
+        self.params = model.named_steps["linearregression"].coef_
+
+        # Get the AIC value
+        self.calculate_aic(y, self.y_pred, self.params)
+
+    def predict_x(self, y):
+        '''
+        Predict the value of x (Dose) to achieve a specific Y (Response)
+
+        Parameters
+        ----------
+        y
+            the continuous response variable
+
+        Returns
+        -------
+        an estimate of the x (Dose) at that response        
+        '''
+
+        # The params attributes are needed
+        if self.params is None:
+            raise TypeError("Please run the .fit() function first to get a response level.")
+        
+        # Calculate the roots with numpy - step 1: format
+        ordered_params = np.append(np.flip(self.params), y - self.fixed_intercept)
+
+        # Calculate the roots with numpy - step 2: use np roots
+        roots = np.roots(ordered_params)
+
+        # Calculate the roots with numpy - step 3: find the smallest non-negative/non-zero root
+        smallest_root = np.min([root for root in roots if root > 0])
+        return smallest_root
+    
+    def response_curve(self, steps = 10):
+        '''
+        Create a response curve
+        
+        Parameters
+        ----------
+        steps
+            the number of modeled points inbetween existing points
+        
+        Returns
+        -------
+        a curve pandas DataFrame with the Dose and Response
+        '''
+
+        # Determine x values to use
+        dose_x_vals = np.round(self.gen_uneven_spacing(self._toModel[self._concentration].tolist(), int_steps = steps), 4)
+
+        # Define curve and its columns
+        curve = pd.DataFrame([dose_x_vals, self.model.predict(dose_x_vals.reshape(-1, 1))]).T
+        curve.columns = ["Dose in uM", "Response"]
+        curve["Response"] = curve["Response"] + self.fixed_intercept
+        
+        # Save the curve
+        self.curve = curve
+
+    # Expand the init function definition to include the degree of the polynomial
+    def __init__(self, toModel, concentration, response, degree):
+        
+        # toModel, concentration, and response have already been calculated in another function
+        super().__init__(toModel, concentration, response)
+        self.degree = degree
+
+    degree = property(operator.attrgetter('_degree'))
+
+    @degree.setter
+    def degree(self, degree_val):
+        self._degree = degree_val
+
 ## General Non-Linear Regression ## 
 class GenReg_Cont(Continuous_Model):
 
@@ -324,6 +430,14 @@ class AsyReg_Cont(GenReg_Cont):
         '''
         # return -1 / b * np.log(1 - ((y-100) / a))
         return -1 / self.params[1] * np.log(1 - ((y-self.fixed_intercept) / self.params[0]))
+
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
+        a, b = correlated_values(self.params, self.cov)
+        response = self.fixed_intercept + a * (1 - unp.exp(-b * 0.1))
+        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+        return BMDL if BMDL > 0 else np.nan
     
 ## Exponential Regression ## 
 class ExpReg_Cont(GenReg_Cont):
@@ -349,6 +463,14 @@ class ExpReg_Cont(GenReg_Cont):
         '''
         # return ln((y - 100 / a) + 1) / b
         return np.log(((y - self.fixed_intercept) / self.params[0]) + 1) / self.params[1]
+    
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
+        a, b = correlated_values(self.params, self.cov)
+        response = self.fixed_intercept + (a * (unp.exp(b * 0.1) - 1))
+        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+        return BMDL if BMDL > 0 else np.nan
 
 ## Gompertz Regression ##
 class GomReg_Cont(GenReg_Cont):
@@ -374,6 +496,14 @@ class GomReg_Cont(GenReg_Cont):
         '''
         # return -1/c * ln((ln((y-100)/a)) / -1*b)
         return -1 / self.params[2] * np.log(np.log((y - 100) / self.params[0]) / (-1 * self.params[1]))
+    
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
+        a, b, c = correlated_values(self.params, self.cov)
+        response = self.fixed_intercept + a * unp.exp(-1 * b * unp.exp(-1 * c * 0.1))
+        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+        return BMDL if BMDL > 0 else np.nan
 
 ## Hill Regression ## 
 class HillReg_Cont(GenReg_Cont):
@@ -405,6 +535,14 @@ class HillReg_Cont(GenReg_Cont):
 
         # Return the value ((yadj * b^a) / (1 - yadj))^(1/a)
         return ((yadj * b**a) / (1 - yadj))**(1/a)
+    
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
+        a, b = correlated_values(self.params, self.cov)
+        response = self.fixed_intercept + ((self.vmax * (0.1**a)) / (b**a + 0.1**a))
+        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+        return BMDL if BMDL > 0 else np.nan
     
     # Define the vmax value - the highest y value
     def __init__(self, toModel, concentration, response):
@@ -438,6 +576,17 @@ class MMReg_Cont(GenReg_Cont):
 
         # Return -(y-i)a / (y-i)-v
         return (-1 * (y - self.fixed_intercept) * self.params[0]) / ((y - self.fixed_intercept) - self.vmax)
+    
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
+        try:
+            a = correlated_values(self.params, self.cov)
+            response = self.fixed_intercept + ((self.vmax * 0.1) / (a + 0.1))
+            BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+        except TypeError:
+            BMDL = np.nan
+        return BMDL if BMDL > 0 else np.nan
     
     # Define the vmax value - the highest y value
     def __init__(self, toModel, concentration, response):
