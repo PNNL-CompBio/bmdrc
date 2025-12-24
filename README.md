@@ -50,9 +50,9 @@ Available Models: gamma, log logistic, log probit, logistic, multistage, probit,
 
 **Continuous Data**
 
-- *ContinuousClass* The `ContinuousClass` object requires only four columns: chemical, endpoint, concentration, and response (a continuous variable with any range). All selected models support negative numbers and zeroes. NA values are automatically filtered out. Optionally, an ANOVA can be fit to determine if there's differences in concentrations, with checks to ensure an ANOVA model is appropriate for the given dataset. See a full pipeline demo [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/vignettes/Continuous%20Class%20Example.ipynb)
+- *ContinuousClass* The `ContinuousClass` object requires only four columns: chemical, endpoint, concentration, and response (a continuous variable with any range). All selected models support negative numbers and zeroes. NA values are automatically filtered out. All models assume that data is meant to be monotonic (increasing/staying the same OR decreasing/staying the same). Thus, there will be one curve. See a full pipeline demo [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/vignettes/Continuous%20Class%20Example.ipynb)
 
-Available Models: asymptotic regression, exponential, Gompertz, Hill, Michaelis-Mentin, polynomial regression (Quadratic, Cubic, Quartic, etc), power, Weibull
+Available Models: asymptotic regression, exponential, Gompertz, Hill, Michaelis-Mentin, power, Weibull
 
 # Example Data and Reports
  
