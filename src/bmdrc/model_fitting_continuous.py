@@ -353,7 +353,7 @@ class GenReg_Cont(Continuous_Model):
 
     def fit(self, fixed_intercept: float = 0):
         '''
-        Fit a asymptotic regression model, calculate GOF and AIC
+        Fit a regression model, calculate GOF and AIC
 
         Parameters
         ----------
@@ -372,10 +372,11 @@ class GenReg_Cont(Continuous_Model):
         x = self._toModel[self._concentration].to_numpy()
         y = self._toModel[self._response].to_numpy()
         
-        # Fit curve - there is no model object to keep
-        params, _ = curve_fit(self.model_equation, x, y)
+        # Fit curve - there is no model object to keep. Keep predictions, params, and covariance matrix
+        params, cov = curve_fit(self.model_equation, x, y)
         self.y_pred = self.model_equation(x, *params)
         self.params = params
+        self.cov = cov
 
         # Get the AIC value
         self.calculate_aic(y, self.y_pred, self.params)
@@ -519,7 +520,7 @@ class HillReg_Cont(GenReg_Cont):
 class MMReg_Cont(GenReg_Cont):
 
     # Update the model equation
-    def model_equation(self, x, a, b):
+    def model_equation(self, x, a):
         '''Internal function to fit the curve'''
         return self.fixed_intercept + ((self.vmax * x) / (a + x))
     
