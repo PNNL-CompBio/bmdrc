@@ -620,6 +620,14 @@ class PowReg_Cont(GenReg_Cont):
         # return ((y-100)/a)^1/b
         return ((y-self.fixed_intercept)/self.params[0])**(1/self.params[1])
     
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
+        a, b = correlated_values(self.params, self.cov)
+        response = self.fixed_intercept + a * 0.1**b
+        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+        return BMDL if BMDL > 0 else np.nan
+    
 ## Weibull Regression
 class WeiReg_Cont(GenReg_Cont):
 
@@ -650,3 +658,50 @@ class WeiReg_Cont(GenReg_Cont):
         # return b(-ln(1-(y-100)/a))^1/c
         p1 = 1 - ((y - self.fixed_intercept) / a)
         return b * (-1 * np.log(p1))**(1/c)
+    
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
+        a, b, c = correlated_values(self.params, self.cov)
+        response = self.fixed_intercept + (a * (1 - unp.exp(-(0.1 / b)**c)))
+        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+        return BMDL if BMDL > 0 else np.nan
+
+#############################
+## MODEL FITTING FUNCTIONS ##
+#############################
+
+def _removed_endpoints_stats(self):
+    '''
+    Accessory function to fit_the_models. 
+    As the first in the pipeline, this function calculates summary
+    statistics for the endpoints that are filtered out. No models are
+    fit in these values. 
+    '''
+
+    if any(self.plate_groups["bmdrc.filter"] == "Remove"):
+
+        # Make a data frame with all filtered endpoints called low quality and group it 
+        low_quality = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"].groupby("bmdrc.Endpoint.ID")
+
+        # Calculate the area under the curve (AUC) and the min and max dose. Model, BMD10, BMDL, and BMD50 are all NA. 
+        bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df[con._response], x = df[con._concentration])).reset_index().rename(columns = {0: "AUC"})
+        bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
+        bmds_filtered["Min_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", con._concentration]].min(con._concentration).reset_index()[con._concentration], 4)
+        bmds_filtered["Max_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", con._concentration]].max(con._concentration).reset_index()[con._concentration], 4)
+
+        # Calculate the total area
+        bmds_filtered["Max_Response"] = round(low_quality[["bmdrc.Endpoint.ID", con._response]].max(con._response).reset_index()[con._response], 4)
+        bmds_filtered["Area"] = (bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"]) * bmds_filtered["Max_Response"]
+
+        # Normalize the AUC by the area
+        bmds_filtered["AUC_Norm"] = round(bmds_filtered["AUC"] / bmds_filtered["Area"], 8)
+        bmds_filtered["AUC"] = round(bmds_filtered["AUC"], 4)
+
+        # Order columns
+        self.bmds_filtered = bmds_filtered[["bmdrc.Endpoint.ID", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm"]]
+
+    else:
+
+        self.bmds_filtered = None
+

@@ -606,7 +606,7 @@ def _removed_endpoints_stats(self):
         low_quality = low_quality.groupby("bmdrc.Endpoint.ID")
 
         # Calculate values 
-        bmds_filtered = low_quality.apply(lambda df: np.trapz(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
+        bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
         bmds_filtered["Min_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].min(self.concentration).reset_index()[self.concentration], 4)
         bmds_filtered["Max_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].max(self.concentration).reset_index()[self.concentration], 4)
