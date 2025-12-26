@@ -4,6 +4,7 @@ from abc import abstractmethod
 
 from .preprocessing import remove_endpoints
 from .filtering import min_concentration, correlation_score
+from .model_fitting_continuous import fit_continuous_models
 
 __author__ = "David Degnan"
 
@@ -49,6 +50,14 @@ class ContinuousClass():
     @abstractmethod
     def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False, direction = "below"):
         correlation_score(self, score, apply, diagnostic_plot, direction)
+
+    ###########################
+    ## MODEL FITTING MODULES ##
+    ###########################
+
+    @abstractmethod
+    def fit_models(self, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False):
+        fit_continuous_models(self, aic_threshold, model_selection, diagnostic_mode)
 
     #####################
     ## INIT DEFINITION ##

@@ -741,3 +741,125 @@ def _removed_endpoints_stats(self):
 
         self.bmds_filtered = None
 
+def fit_continuous_models(self, aic_threshold: float, model_selection: str, diagnostic_mode: bool):
+    '''
+    Fit continuous monotonic models to your dataset. 
+
+    Parameters
+    ----------    
+    aic_threshold
+        A float for the Akaike Information Criterion (AIC) threshold. The default is 2.
+
+    model_selection
+        A string for the model_selection model. Currently, only "lowest BMDL" is supported.
+
+    diagnostic_mode
+        A boolean to indicate whether diagnostic messages should be printed. Default is False
+    '''
+
+    # Save parameters 
+    self.model_fitting_aic_threshold = aic_threshold
+    self.model_fitting_model_selection = model_selection
+
+    # Pull dose_response
+    dose_response = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]
+
+    # Determine list of endpoints
+    endpoints = dose_response["bmdrc.Endpoint.ID"].unique().tolist()
+
+    ####################
+    ## FIT ALL MODELS ##
+    ####################
+
+    # Store AICs, BMDLs, BMD10s, and BMD50s
+    AICs = []
+    BMDLs = []
+    BMD10s = []
+    BMD50s = []
+
+    # Iterate through each endpoint
+    for endpoint in endpoints:
+
+        # Add a message if diagnostic mode
+        if diagnostic_mode:
+            print(".....fitting models for", endpoint)
+
+        # Pull a specific dataset
+        sub_data = dose_response[dose_response["bmdrc.Endpoint.ID"] == endpoint]
+
+        # Calculate the AIC, BMDL, BMD10, and BMD50
+        def fit_stats(mod_type):
+            '''Wrapper function for fitting models and calculating statistics'''
+            try:
+                fit_mod = mod_type(sub_data, self._concentration, self._response)
+                fit_mod.fit(fixed_intercept = 100)
+                return [fit_mod.aic, fit_mod.calc_bmdl(), fit_mod.predict_x(fit_mod.get_response_level(10)), fit_mod.predict_x(fit_mod.get_response_level(50))]
+            except:
+                return [np.nan, np.nan, np.nan, np.nan]
+
+        # Calculate the model metrics
+        fitted_stats = [fit_stats(LinReg_Cont), fit_stats(AsyReg_Cont), fit_stats(ExpReg_Cont), 
+                        fit_stats(GomReg_Cont), fit_stats(HillReg_Cont), fit_stats(MMReg_Cont),
+                        fit_stats(PowReg_Cont), fit_stats(WeiReg_Cont)]
+
+        # Unpack each of the statistics and append
+        AIC_vals, BMDL_vals, BMD10_vals, BMD50_vals = [endpoint], [endpoint], [endpoint], [endpoint]
+        AIC_vals.extend([metrics[0] for metrics in fitted_stats])
+        AICs.append(AIC_vals)
+        BMDL_vals.extend([metrics[1] for metrics in fitted_stats])
+        BMDLs.append(BMDL_vals)
+        BMD10_vals.extend([metrics[2] for metrics in fitted_stats])
+        BMD10s.append(BMD10_vals)
+        BMD50_vals.extend([metrics[3] for metrics in fitted_stats])
+        BMD50s.append(BMD50_vals)
+
+        # Set the row order
+        column_names = ["bmdrc.Endpoint.ID", "linear", "asymptotic", "exponential", "gompertz", "hill", "michaelis-mentin", "power", "weibull"]
+
+        # Save data.frame of calculated values
+        self.AIC_df = pd.DataFrame(AICs, columns = column_names)
+        self.BMDLs_df = pd.DataFrame(BMDLs, columns = column_names)
+        self.BMD10s_df = pd.DataFrame(BMD10s, columns = column_names)
+        self.BMD50s_df = pd.DataFrame(BMD50s, columns = column_names)
+    
+    #######################
+    ## SELECT BEST MODEL ##
+    #######################
+
+    # Find the best model per dataset
+    best_model = {item: "" for item in con.AIC_df["bmdrc.Endpoint.ID"].tolist()}
+
+    # Keep a list of possible model selections
+    poss_models = ["asymptotic", "exponential", "gompertz", "hill", "michaelis-mentin", "power", "weibull"]
+
+    # Find the best model
+    for row in range(len(self.AIC_df)):
+        
+        # Extract the endpoint
+        endpoint = self.AIC_df["bmdrc.Endpoint.ID"][row]
+
+        # Step 1: Extract the best models based on AIC
+        values = np.array(self.AIC_df.iloc[row, 2:].to_list())
+        min_value = np.min([val for val in values if not np.isnan(val)])
+        model_choices = [poss_models[x] for x in range(len(values)) if not np.isnan(x) and (values[x] - min_value <= 2)] 
+        if len(model_choices) == 1:
+            best_model[endpoint] = model_choices[0]
+
+        # Step 2: Select the smallest BMDL
+        else:
+
+            # Make a dictionary of BMDLs
+            remaining = self.BMDLs_df[self.BMDLs_df["bmdrc.Endpoint.ID"] == endpoint][model_choices].reset_index(drop = True).loc[0].to_dict()
+
+            # Select smallest BMDL if it is possible
+            if not all(np.isnan(value) for value in remaining.values()):
+                best_model[endpoint] = min(remaining, key = remaining.get)
+
+            # Step 3: Otherwise, select smallest BMD10
+            else:
+                remaining = self.BMD10s_df[self.BMD10s_df["bmdrc.Endpoint.ID"] == endpoint][model_choices].reset_index(drop = True).loc[0].to_dict()
+                best_model[endpoint] = min(remaining, key = remaining.get)
+
+    #####################
+    ## BUILD BMD TABLE ##
+    #####################

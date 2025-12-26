@@ -1062,7 +1062,6 @@ def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selec
 
     diagnostic_mode
         A boolean to indicate whether diagnostic messages should be printed. Default is False
-
     '''
 
     ##################
