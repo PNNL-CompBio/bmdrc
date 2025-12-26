@@ -221,7 +221,8 @@ class LinReg_Cont(Continuous_Model):
             raise TypeError("Please run the .fit() function first to get a response level.")
         
         # Return the estimate 
-        return (y - self.fixed_intercept) / self.params[0]
+        x = (y - self.fixed_intercept) / self.params[0]
+        return x if x != 0 else np.nan
     
     def response_curve(self, steps = 10):
         '''
@@ -247,6 +248,11 @@ class LinReg_Cont(Continuous_Model):
         
         # Save the curve
         self.curve = curve
+
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Not currently supported'''
+        return np.nan
 
 ## Quadratic, Cubic, and Quartic Regression ##
 class PolyReg_Cont(Continuous_Model):
@@ -337,7 +343,12 @@ class PolyReg_Cont(Continuous_Model):
         
         # Save the curve
         self.curve = curve
-
+    
+    # Calculate the bmdl
+    def calc_bmdl(self):
+        '''Not currently supported'''
+        return np.nan
+    
     # Expand the init function definition to include the degree of the polynomial
     def __init__(self, toModel, concentration, response, degree):
         
@@ -429,15 +440,19 @@ class AsyReg_Cont(GenReg_Cont):
         an estimate of the x (Dose) at that response        
         '''
         # return -1 / b * np.log(1 - ((y-100) / a))
-        return -1 / self.params[1] * np.log(1 - ((y-self.fixed_intercept) / self.params[0]))
+        x = -1 / self.params[1] * np.log(1 - ((y-self.fixed_intercept) / self.params[0]))
+        return x if x != 0 else np.nan
 
     # Calculate the bmdl
     def calc_bmdl(self):
         '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
-        a, b = correlated_values(self.params, self.cov)
-        response = self.fixed_intercept + a * (1 - unp.exp(-b * 0.1))
-        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
-        return BMDL if BMDL > 0 else np.nan
+        try:
+            a, b = correlated_values(self.params, self.cov)
+            response = self.fixed_intercept + a * (1 - unp.exp(-b * 0.1))
+            BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+            return BMDL if BMDL >= 0 else np.nan
+        except:
+            return np.nan
     
 ## Exponential Regression ## 
 class ExpReg_Cont(GenReg_Cont):
@@ -462,15 +477,19 @@ class ExpReg_Cont(GenReg_Cont):
         an estimate of the x (Dose) at that response        
         '''
         # return ln((y - 100 / a) + 1) / b
-        return np.log(((y - self.fixed_intercept) / self.params[0]) + 1) / self.params[1]
+        x = np.log(((y - self.fixed_intercept) / self.params[0]) + 1) / self.params[1]
+        return x if x != 0 else np.nan
     
     # Calculate the bmdl
     def calc_bmdl(self):
         '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
-        a, b = correlated_values(self.params, self.cov)
-        response = self.fixed_intercept + (a * (unp.exp(b * 0.1) - 1))
-        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
-        return BMDL if BMDL > 0 else np.nan
+        try:
+            a, b = correlated_values(self.params, self.cov)
+            response = self.fixed_intercept + (a * (unp.exp(b * 0.1) - 1))
+            BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+            return BMDL if BMDL >= 0 else np.nan
+        except:
+            return np.nan
 
 ## Gompertz Regression ##
 class GomReg_Cont(GenReg_Cont):
@@ -495,15 +514,19 @@ class GomReg_Cont(GenReg_Cont):
         an estimate of the x (Dose) at that response        
         '''
         # return -1/c * ln((ln((y-100)/a)) / -1*b)
-        return -1 / self.params[2] * np.log(np.log((y - 100) / self.params[0]) / (-1 * self.params[1]))
+        x = -1 / self.params[2] * np.log(np.log((y - 100) / self.params[0]) / (-1 * self.params[1]))
+        return x if x != 0 else np.nan
     
     # Calculate the bmdl
     def calc_bmdl(self):
         '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
-        a, b, c = correlated_values(self.params, self.cov)
-        response = self.fixed_intercept + a * unp.exp(-1 * b * unp.exp(-1 * c * 0.1))
-        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
-        return BMDL if BMDL > 0 else np.nan
+        try:
+            a, b, c = correlated_values(self.params, self.cov)
+            response = self.fixed_intercept + a * unp.exp(-1 * b * unp.exp(-1 * c * 0.1))
+            BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+            return BMDL if BMDL >= 0 else np.nan
+        except:
+            return np.nan
 
 ## Hill Regression ## 
 class HillReg_Cont(GenReg_Cont):
@@ -534,15 +557,19 @@ class HillReg_Cont(GenReg_Cont):
         b = self.params[1]
 
         # Return the value ((yadj * b^a) / (1 - yadj))^(1/a)
-        return ((yadj * b**a) / (1 - yadj))**(1/a)
+        x = ((yadj * b**a) / (1 - yadj))**(1/a)
+        return x if x != 0 else np.nan
     
     # Calculate the bmdl
     def calc_bmdl(self):
         '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
-        a, b = correlated_values(self.params, self.cov)
-        response = self.fixed_intercept + ((self.vmax * (0.1**a)) / (b**a + 0.1**a))
-        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
-        return BMDL if BMDL > 0 else np.nan
+        try:
+            a, b = correlated_values(self.params, self.cov)
+            response = self.fixed_intercept + ((self.vmax * (0.1**a)) / (b**a + 0.1**a))
+            BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+            return BMDL if BMDL >= 0 else np.nan
+        except:
+            return np.nan
     
     # Define the vmax value - the highest y value
     def __init__(self, toModel, concentration, response):
@@ -575,7 +602,8 @@ class MMReg_Cont(GenReg_Cont):
         '''
 
         # Return -(y-i)a / (y-i)-v
-        return (-1 * (y - self.fixed_intercept) * self.params[0]) / ((y - self.fixed_intercept) - self.vmax)
+        x = (-1 * (y - self.fixed_intercept) * self.params[0]) / ((y - self.fixed_intercept) - self.vmax)
+        return x if x != 0 else np.nan
     
     # Calculate the bmdl
     def calc_bmdl(self):
@@ -584,9 +612,9 @@ class MMReg_Cont(GenReg_Cont):
             a = correlated_values(self.params, self.cov)
             response = self.fixed_intercept + ((self.vmax * 0.1) / (a + 0.1))
             BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
-        except TypeError:
-            BMDL = np.nan
-        return BMDL if BMDL > 0 else np.nan
+            return BMDL if BMDL >= 0 else np.nan
+        except:
+            return np.nan
     
     # Define the vmax value - the highest y value
     def __init__(self, toModel, concentration, response):
@@ -618,15 +646,19 @@ class PowReg_Cont(GenReg_Cont):
         an estimate of the x (Dose) at that response        
         '''
         # return ((y-100)/a)^1/b
-        return ((y-self.fixed_intercept)/self.params[0])**(1/self.params[1])
+        x = ((y-self.fixed_intercept)/self.params[0])**(1/self.params[1])
+        return x if x != 0 else np.nan
     
     # Calculate the bmdl
     def calc_bmdl(self):
         '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
-        a, b = correlated_values(self.params, self.cov)
-        response = self.fixed_intercept + a * 0.1**b
-        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
-        return BMDL if BMDL > 0 else np.nan
+        try:
+            a, b = correlated_values(self.params, self.cov)
+            response = self.fixed_intercept + a * 0.1**b
+            BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+            return BMDL if BMDL >= 0 else np.nan
+        except:
+            return np.nan
     
 ## Weibull Regression
 class WeiReg_Cont(GenReg_Cont):
@@ -657,15 +689,19 @@ class WeiReg_Cont(GenReg_Cont):
 
         # return b(-ln(1-(y-100)/a))^1/c
         p1 = 1 - ((y - self.fixed_intercept) / a)
-        return b * (-1 * np.log(p1))**(1/c)
+        x = b * (-1 * np.log(p1))**(1/c)
+        return x if x != 0 else np.nan
     
     # Calculate the bmdl
     def calc_bmdl(self):
         '''Calculate the lowest effect benchmark dose. In this case, it's the lower bound of BMD10'''
-        a, b, c = correlated_values(self.params, self.cov)
-        response = self.fixed_intercept + (a * (1 - unp.exp(-(0.1 / b)**c)))
-        BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
-        return BMDL if BMDL > 0 else np.nan
+        try:
+            a, b, c = correlated_values(self.params, self.cov)
+            response = self.fixed_intercept + (a * (1 - unp.exp(-(0.1 / b)**c)))
+            BMDL = self.predict_x(self.get_response_level(10) - unp.std_devs(response))
+            return BMDL if BMDL >= 0 else np.nan
+        except:
+            return np.nan
 
 #############################
 ## MODEL FITTING FUNCTIONS ##
