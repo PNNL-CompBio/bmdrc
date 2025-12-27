@@ -827,7 +827,7 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
     #######################
 
     # Find the best model per dataset
-    best_model = {item: "" for item in con.AIC_df["bmdrc.Endpoint.ID"].tolist()}
+    best_model = {item: "" for item in self.AIC_df["bmdrc.Endpoint.ID"].tolist()}
 
     # Keep a list of possible model selections
     poss_models = ["asymptotic", "exponential", "gompertz", "hill", "michaelis-mentin", "power", "weibull"]
