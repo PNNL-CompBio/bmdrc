@@ -721,13 +721,13 @@ def _removed_endpoints_stats(self):
         low_quality = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"].groupby("bmdrc.Endpoint.ID")
 
         # Calculate the area under the curve (AUC) and the min and max dose. Model, BMD10, BMDL, and BMD50 are all NA. 
-        bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df[con._response], x = df[con._concentration])).reset_index().rename(columns = {0: "AUC"})
+        bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df[self._response], x = df[self._concentration])).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
-        bmds_filtered["Min_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", con._concentration]].min(con._concentration).reset_index()[con._concentration], 4)
-        bmds_filtered["Max_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", con._concentration]].max(con._concentration).reset_index()[con._concentration], 4)
+        bmds_filtered["Min_Dose"] = low_quality[["bmdrc.Endpoint.ID", self._concentration]].min(self._concentration).reset_index()[self._concentration]
+        bmds_filtered["Max_Dose"] = low_quality[["bmdrc.Endpoint.ID", self._concentration]].max(self._concentration).reset_index()[self._concentration]
 
         # Calculate the total area
-        bmds_filtered["Max_Response"] = round(low_quality[["bmdrc.Endpoint.ID", con._response]].max(con._response).reset_index()[con._response], 4)
+        bmds_filtered["Max_Response"] = low_quality[["bmdrc.Endpoint.ID", self._response]].max(self._response).reset_index()[self._response]
         bmds_filtered["Area"] = (bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"]) * bmds_filtered["Max_Response"]
 
         # Normalize the AUC by the area
@@ -766,6 +766,9 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
 
     # Determine list of endpoints
     endpoints = dose_response["bmdrc.Endpoint.ID"].unique().tolist()
+
+    # Calculate stats for endpoints that will not be fit to models
+    _removed_endpoints_stats(self)
 
     ####################
     ## FIT ALL MODELS ##
@@ -863,3 +866,57 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
     #####################
     ## BUILD BMD TABLE ##
     #####################
+
+    ## Collect fitting statistics for best model ##
+
+    BMDS_model = []
+
+    # Collect statistics for the best model
+    for endpoint in best_model:
+    
+        # Identify the model
+        model = best_model[endpoint]
+    
+        # Build a dictionary that holds the information per row
+        rowDict = {
+            "bmdrc.Endpoint.ID": endpoint,
+            "Model": model,
+            "BMD10": self.BMD10s_df[self.BMD10s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
+            "BMDL": self.BMDLs_df[self.BMDLs_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
+            "BMD50": self.BMD50s_df[self.BMD50s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
+        }
+    
+        # Append the list of dictionaries
+        BMDS_model.append(rowDict)
+    
+    # Save half of the table
+    bmds_stats = pd.DataFrame(BMDS_model)
+
+    ## Collect other BMD metrics and merge ## 
+
+    dose_response_groups = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"].groupby("bmdrc.Endpoint.ID")
+
+    # Calculate Min_Dose, Max_Dose, AUC, and AUC_Norm
+    bmds = dose_response_groups.apply(lambda df: np.trapezoid(df[self._response], x = df[self._concentration])).reset_index().rename(columns = {0: "AUC"})
+    bmds["Min_Dose"] = dose_response_groups[["bmdrc.Endpoint.ID", self._concentration]].min(self._concentration).reset_index()[self._concentration]
+    bmds["Max_Dose"] = dose_response_groups[["bmdrc.Endpoint.ID", self._concentration]].max(self._concentration).reset_index()[self._concentration]
+    
+    # Calculate the total area
+    bmds["Max_Response"] = dose_response_groups[["bmdrc.Endpoint.ID", self._response]].max(self._response).reset_index()[self._response]
+    bmds["Area"] = (bmds["Max_Dose"] - bmds["Min_Dose"]) * bmds["Max_Response"]
+    
+    # Normalize the AUC by the area
+    bmds["AUC_Norm"] = round(bmds["AUC"] / bmds["Area"], 8)
+    bmds["AUC"] = round(bmds["AUC"], 4)
+    
+    # Save resulting dataframe
+    self.bmds = bmds_stats.merge(bmds)[["bmdrc.Endpoint.ID", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm"]]
+
+    # Set a flag that model fitting has been completed
+    self.report_model_fits = True 
+
+
+
+
+
+    
