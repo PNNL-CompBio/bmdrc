@@ -4,7 +4,7 @@ from abc import abstractmethod
 
 from .preprocessing import remove_endpoints
 from .filtering import min_concentration, correlation_score
-from .model_fitting_continuous import fit_continuous_models
+from .model_fitting_continuous import fit_continuous_models, gen_response_curve
 
 __author__ = "David Degnan"
 
@@ -56,8 +56,13 @@ class ContinuousClass():
     ###########################
 
     @abstractmethod
-    def fit_models(self, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False):
-        fit_continuous_models(self, aic_threshold, model_selection, diagnostic_mode)
+    def fit_models(self, fixed_intercept = 0, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False):
+        fit_continuous_models(self, fixed_intercept, aic_threshold, model_selection, diagnostic_mode)
+
+    
+    @abstractmethod
+    def response_curve(self, chemical_name, endpoint_name, model, fixed_intercept = 0, add_bmds = False, steps = 10):
+        gen_response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds, steps)
 
     #####################
     ## INIT DEFINITION ##

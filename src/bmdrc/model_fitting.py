@@ -1181,8 +1181,8 @@ def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str,
 
     # Subset plate groups to the id
     the_subset = self.plate_groups[(self.plate_groups[self.chemical] == chemical_name) & 
-                                 (self.plate_groups[self.endpoint] == endpoint_name) &  
-                                 (self.plate_groups["bmdrc.filter"] == "Keep")]
+                                   (self.plate_groups[self.endpoint] == endpoint_name) &  
+                                   (self.plate_groups["bmdrc.filter"] == "Keep")]
 
     # Pull only the columns that are needed
     to_model = the_subset[[self.concentration, "bmdrc.num.nonna", "bmdrc.num.affected"]]

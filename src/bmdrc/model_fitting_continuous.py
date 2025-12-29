@@ -11,10 +11,12 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from uncertainties import correlated_values
-import uncertainties.unumpy as unp 
+import uncertainties.unumpy as unp
+import matplotlib.pyplot as plt
 
 import numpy as np
 import pandas as pd
+import re
 
 ############################
 ## CLASSES FOR MODEL FITS ##
@@ -741,12 +743,15 @@ def _removed_endpoints_stats(self):
 
         self.bmds_filtered = None
 
-def fit_continuous_models(self, aic_threshold: float, model_selection: str, diagnostic_mode: bool):
+def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, model_selection: str, diagnostic_mode: bool):
     '''
     Fit continuous monotonic models to your dataset. 
 
     Parameters
     ----------    
+    fixed_intercept
+        The value an intercept must pass through. Default is (0,0)
+        
     aic_threshold
         A float for the Akaike Information Criterion (AIC) threshold. The default is 2.
 
@@ -795,7 +800,7 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
             '''Wrapper function for fitting models and calculating statistics'''
             try:
                 fit_mod = mod_type(sub_data, self._concentration, self._response)
-                fit_mod.fit(fixed_intercept = 100)
+                fit_mod.fit(fixed_intercept = fixed_intercept)
                 return [fit_mod.aic, fit_mod.calc_bmdl(), fit_mod.predict_x(fit_mod.get_response_level(10)), fit_mod.predict_x(fit_mod.get_response_level(50))]
             except:
                 return [np.nan, np.nan, np.nan, np.nan]
@@ -820,29 +825,29 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
         column_names = ["bmdrc.Endpoint.ID", "linear", "asymptotic", "exponential", "gompertz", "hill", "michaelis-mentin", "power", "weibull"]
 
         # Save data.frame of calculated values
-        self.AIC_df = pd.DataFrame(AICs, columns = column_names)
-        self.BMDLs_df = pd.DataFrame(BMDLs, columns = column_names)
-        self.BMD10s_df = pd.DataFrame(BMD10s, columns = column_names)
-        self.BMD50s_df = pd.DataFrame(BMD50s, columns = column_names)
+        self.aics_df = pd.DataFrame(AICs, columns = column_names)
+        self.bmdls_df = pd.DataFrame(BMDLs, columns = column_names)
+        self.bmd10s_df = pd.DataFrame(BMD10s, columns = column_names)
+        self.bmd50s_df = pd.DataFrame(BMD50s, columns = column_names)
     
     #######################
     ## SELECT BEST MODEL ##
     #######################
 
     # Find the best model per dataset
-    best_model = {item: "" for item in self.AIC_df["bmdrc.Endpoint.ID"].tolist()}
+    best_model = {item: "" for item in self.aics_df["bmdrc.Endpoint.ID"].tolist()}
 
     # Keep a list of possible model selections
     poss_models = ["asymptotic", "exponential", "gompertz", "hill", "michaelis-mentin", "power", "weibull"]
 
     # Find the best model
-    for row in range(len(self.AIC_df)):
+    for row in range(len(self.aics_df)):
         
         # Extract the endpoint
-        endpoint = self.AIC_df["bmdrc.Endpoint.ID"][row]
+        endpoint = self.aics_df["bmdrc.Endpoint.ID"][row]
 
         # Step 1: Extract the best models based on AIC
-        values = np.array(self.AIC_df.iloc[row, 2:].to_list())
+        values = np.array(self.aics_df.iloc[row, 2:].to_list())
         min_value = np.min([val for val in values if not np.isnan(val)])
         model_choices = [poss_models[x] for x in range(len(values)) if not np.isnan(x) and (values[x] - min_value <= 2)] 
         if len(model_choices) == 1:
@@ -852,7 +857,7 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
         else:
 
             # Make a dictionary of BMDLs
-            remaining = self.BMDLs_df[self.BMDLs_df["bmdrc.Endpoint.ID"] == endpoint][model_choices].reset_index(drop = True).loc[0].to_dict()
+            remaining = self.bmdls_df[self.bmdls_df["bmdrc.Endpoint.ID"] == endpoint][model_choices].reset_index(drop = True).loc[0].to_dict()
 
             # Select smallest BMDL if it is possible
             if not all(np.isnan(value) for value in remaining.values()):
@@ -860,7 +865,7 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
 
             # Step 3: Otherwise, select smallest BMD10
             else:
-                remaining = self.BMD10s_df[self.BMD10s_df["bmdrc.Endpoint.ID"] == endpoint][model_choices].reset_index(drop = True).loc[0].to_dict()
+                remaining = self.bmd10s_df[self.bmd10s_df["bmdrc.Endpoint.ID"] == endpoint][model_choices].reset_index(drop = True).loc[0].to_dict()
                 best_model[endpoint] = min(remaining, key = remaining.get)
 
     #####################
@@ -881,9 +886,9 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
         rowDict = {
             "bmdrc.Endpoint.ID": endpoint,
             "Model": model,
-            "BMD10": self.BMD10s_df[self.BMD10s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
-            "BMDL": self.BMDLs_df[self.BMDLs_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
-            "BMD50": self.BMD50s_df[self.BMD50s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
+            "BMD10": self.bmd10s_df[self.bmd10s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
+            "BMDL": self.bmdls_df[self.bmdls_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
+            "BMD50": self.bmd50s_df[self.bmd50s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
         }
     
         # Append the list of dictionaries
@@ -915,8 +920,112 @@ def fit_continuous_models(self, aic_threshold: float, model_selection: str, diag
     # Set a flag that model fitting has been completed
     self.report_model_fits = True 
 
+def _curve_plot(self, model_obj, chemical_name, endpoint_name, model, add_bmds):
+    '''
+    Support function to build curve plots using gen_response_curve
+    '''
 
+    # Build figure
+    fig = plt.figure(figsize = (10, 5))
 
+    # Build the points and curve
+    plt.scatter(model_obj._toModel[model_obj._concentration], model_obj._toModel[model_obj._response], color = "black")
+    plt.plot(model_obj.curve["Dose in uM"], model_obj.curve["Response"], color = "black")
 
+    # Add confidence intervals
+    for row in range(len(model_obj.CI)):
+        plt.plot([model_obj.CI[model_obj._concentration][row], model_obj.CI[model_obj._concentration][row]], [model_obj.CI["Low"][row], model_obj.CI["High"][row]], color = "black")
 
+    # Add BMD10 and BMD50
+    if add_bmds:
+        plt.scatter(model_obj.predict_x(model_obj.get_response_level(10)), model_obj.get_response_level(10), c = "red", label = "BMD10")
+        plt.scatter(model_obj.predict_x(model_obj.get_response_level(50)), model_obj.get_response_level(50), c = "blue", label = "BMD50")
+
+    # Add labels and make plot
+    plt.title("Chemical: " + str(chemical_name) + ", Endpoint: " + str(endpoint_name) + ", Model: " + model)
+    plt.xlabel("Dose in uM")
+    plt.ylabel("Response")
+    plt.legend()
+
+    return(fig)
+
+def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str, fixed_intercept: float, add_bmds: bool, steps: int):
+    '''
+    Generate the x and y coordinates of a specific curve and a plot, which are stored as object attributes
+
+    Parameters
+    ----------
+    chemical_name
+        A string denoting the name of the chemical to generate a curve for 
+
+    endpoint_name
+        A string denoting the name of the endpoint to generate a curve for
+
+    model
+        A string denoting the model engine used to generate the curve. Options are "asymptotic", 
+        "exponential", "gompertz", "hill", "michaelis-mentin", "power", "weibull"
+
+    steps
+        An integer for the number of doses between the minimum and maximum dose. Default is 10. 
+
+    '''
+
+    ################
+    ## RUN CHECKS ##
+    ################
+
+    # Check that chemical_name is an acceptable choice
+    if (chemical_name in (self.df[self.chemical].unique().tolist())) == False:
+        raise ValueError(chemical_name + " is not a recognized chemical_name.")
     
+    # Check that endpoint_name is an acceptable choice 
+    if (endpoint_name in (self.df[self.endpoint].unique().tolist()))== False:
+        raise ValueError(endpoint_name + " is not a recognized endpoint_name.")
+
+    # Select fit by model
+    if (model in ["asymptotic", "exponential", "gompertz", "hill", "michaelis-mentin", "power", "weibull"]) == False:
+        raise ValueError(model + " is not an acceptable model option. Acceptable options are: asymptotic, exponential, gompertz, hill, michaelis-mentin, power, weibull")
+
+    #####################
+    ## CALCULATE CURVE ##
+    #####################
+
+    # Subset plate groups to the id
+    the_subset = self.plate_groups[(self.plate_groups[self._chemical] == chemical_name) & 
+                                   (self.plate_groups[self._endpoint] == endpoint_name)]
+
+    # Construct the correct model object
+    if model == "asymptotic":
+        model_obj = AsyReg_Cont(toModel = the_subset, concentration = self._concentration, response = self._response)
+    elif model == "exponential":
+        model_obj = ExpReg_Cont(toModel = the_subset, concentration = self._concentration, response = self._response)
+    elif model == "gompertz":
+        model_obj = GomReg_Cont(toModel = the_subset, concentration = self._concentration, response = self._response)
+    elif model == "hill":
+        model_obj = HillReg_Cont(toModel = the_subset, concentration = self._concentration, response = self._response)
+    elif model == "michaelis-mentin":
+        model_obj = MMReg_Cont(toModel = the_subset, concentration = self._concentration, response = self._response)
+    elif model == "power":
+        model_obj = PowReg_Cont(toModel = the_subset, concentration = self._concentration, response = self._response)
+    elif model == "weibull":
+        model_obj = WeiReg_Cont(toModel = the_subset, concentration = self._concentration, response = self._response)
+
+    # Run necessary functions
+    model_obj.fit(fixed_intercept = fixed_intercept)
+    model_obj.response_curve(steps = steps)
+    model_obj.calc_conf_interv()
+
+    # Write a function to convert non-alphanumeric characters to underscores
+    def clean_up(x):
+        return re.sub('[^0-9a-zA-Z]+', '_', x)
+
+    # Save results 
+    curve_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_curve"
+    setattr(self, curve_name, model_obj.curve)
+
+    ci_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_confidence_intervals"
+    setattr(self, ci_name, model_obj.CI)
+
+    # Save results
+    fig_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_curve_plot"
+    setattr(self, fig_name, _curve_plot(self, model_obj, chemical_name, endpoint_name, model, add_bmds))
