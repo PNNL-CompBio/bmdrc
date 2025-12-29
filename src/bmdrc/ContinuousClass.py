@@ -5,6 +5,7 @@ from abc import abstractmethod
 from .preprocessing import remove_endpoints
 from .filtering import min_concentration, correlation_score
 from .model_fitting_continuous import fit_continuous_models, gen_response_curve
+from .output_modules_continuous import benchmark_dose, dose_table
 
 __author__ = "David Degnan"
 
@@ -63,6 +64,18 @@ class ContinuousClass():
     @abstractmethod
     def response_curve(self, chemical_name, endpoint_name, model, fixed_intercept = 0, add_bmds = False, steps = 10):
         gen_response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds, steps)
+
+    ####################
+    ## OUTPUT MODULES ##
+    ####################
+
+    @abstractmethod
+    def output_benchmark_dose(self, path = None):
+        benchmark_dose(self, path)
+
+    @abstractmethod
+    def output_dose_table(self, path = None):
+        dose_table(self, path)
 
     #####################
     ## INIT DEFINITION ##
