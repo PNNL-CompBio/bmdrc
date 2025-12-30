@@ -1030,7 +1030,7 @@ def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str,
     fig_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_curve_plot"
     setattr(self, fig_name, _curve_plot(self, model_obj, chemical_name, endpoint_name, model, add_bmds))
 
-def fits_table(self, path: str):
+def fits_table(self, fixed_intercept: float, path: str):
     '''
     Calculate several points along a curve for visualization purposes
 

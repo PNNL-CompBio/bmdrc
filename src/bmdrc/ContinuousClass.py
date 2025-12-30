@@ -62,7 +62,7 @@ class ContinuousClass():
 
     
     @abstractmethod
-    def response_curve(self, chemical_name, endpoint_name, model, fixed_intercept = 0, add_bmds = False, steps = 10):
+    def response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds = False, steps = 10):
         gen_response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds, steps)
 
     ####################
@@ -78,8 +78,8 @@ class ContinuousClass():
         dose_table(self, path)
 
     @abstractmethod
-    def output_fits_table(self, path = None):
-        fits_table(self, path)
+    def output_fits_table(self, fixed_intercept, path = None):
+        fits_table(self, fixed_intercept, path)
 
     #####################
     ## INIT DEFINITION ##
