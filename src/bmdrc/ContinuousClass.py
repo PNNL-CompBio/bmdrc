@@ -4,7 +4,7 @@ from abc import abstractmethod
 
 from .preprocessing import remove_endpoints
 from .filtering import min_concentration, correlation_score
-from .model_fitting_continuous import fit_continuous_models, gen_response_curve
+from .model_fitting_continuous import fit_continuous_models, gen_response_curve, fits_table
 from .output_modules_continuous import benchmark_dose, dose_table
 
 __author__ = "David Degnan"
@@ -76,6 +76,10 @@ class ContinuousClass():
     @abstractmethod
     def output_dose_table(self, path = None):
         dose_table(self, path)
+
+    @abstractmethod
+    def output_fits_table(self, path = None):
+        fits_table(self, path)
 
     #####################
     ## INIT DEFINITION ##

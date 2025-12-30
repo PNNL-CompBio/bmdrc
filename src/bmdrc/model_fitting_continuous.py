@@ -1041,72 +1041,69 @@ def fits_table(self, path: str):
     
     '''
 
-    def calc_fits(ID):
-        '''Define a helper function to fit points to a curve using an endpoint ID'''
+    all_fits = []
+
+    # Iterate through everything that was fit
+    for row in range(len(self.bmds)):
+
+        # Extract the endpoint ID, min dose, max dose, and model
+        endpoint_id = self.bmds["bmdrc.Endpoint.ID"][row]
+        model = self.bmds["Model"][row]
+
+        # Extract the corresponding dataset
+        sub_data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == endpoint_id][[self.concentration, self.response]]
+
+        # Use the correct model object for each
+        if model == "asymptotic":
+            model_obj = AsyReg_Cont(sub_data, self.concentration, self.response)
+        elif model == "exponential":
+            model_obj = ExpReg_Cont(sub_data, self.concentration, self.response)
+        elif model == "gompertz":
+            model_obj = GomReg_Cont(sub_data, self.concentration, self.response)
+        elif model == "hill":
+            model_obj = HillReg_Cont(sub_data, self.concentration, self.response)
+        elif model == "michaelis-mentin":
+            model_obj = MMReg_Cont(sub_data, self.concentration, self.response)
+        elif model == "power":
+            model_obj = PowReg_Cont(sub_data, self.concentration, self.response)
+        elif model == "weibull":
+            model_obj = WeiReg_Cont(sub_data, self.concentration, self.response)
+
+        # Fit the models
+        model_obj.fit(fixed_intercept = 100)
+        model_obj.response_curve(steps = 10)
+
+        # Here, we want to return the curve values
+        curve = model_obj.curve
+        curve.columns = ["X_vals", "Y_vals"]
+
+        # Add needed information
+        curve["Chemical_ID"] = endpoint_id.split(" ")[0]
+        curve["End_Point"] = endpoint_id.split(" ")[1]
+        curve["bmdrc.Endpoint.ID"] = endpoint_id
+        curve = curve[["Chemical_ID", "End_Point", "X_vals", "Y_vals", "bmdrc.Endpoint.ID"]]
+
+        # Append the curve
+        all_fits.append(curve)
         
-        # If the ID is not found in the model_results, then return blanks for x and y 
-        if ((ID in self.model_fits) == False):
-            return(pd.DataFrame({
-                "Chemical_ID": ID.split(" ")[0],
-                "End_Point": ID.split(" ")[1],
+    # Iterate through everything that was fit
+    for row in range(len(self.bmds_filtered)):
+        
+        # Extract the endpoint
+        endpoint_id = self.bmds_filtered["bmdrc.Endpoint.ID"][row]
+
+        all_fits.append(
+            pd.DataFrame({
+                "Chemical_ID": endpoint_id.split(" ")[0],
+                "End_Point": endpoint_id.split(" ")[1],
                 "X_vals": np.nan,
-                "Y_vals": np.nan
-            }, index=[0]))
-
-        def gen_uneven_spacing(doses, int_steps = 10):
-            '''Generates ten steps of points between measurements'''
-            dose_samples = list()
-            for dose_index in range(len(doses) - 1):
-                dose_samples.extend(np.linspace(doses[dose_index],doses[dose_index + 1], int_steps).tolist())
-            return np.unique(dose_samples)
-
-        # Get the model
-        model = self.model_fits[ID][2]
-
-        # Get the parameters
-        params = self.model_fits[ID][1][1]
-
-        # Define the uneven x values
-        dose_x_vals = np.round(gen_uneven_spacing(self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == ID][self.concentration].to_list()), 4)
-
-        def run_fitted_model(fittedfun, dose_x_vals = dose_x_vals, params = params):
-            '''Run modeled x values through the fit function'''
-            return(fittedfun(dose_x_vals, params))
-
-        # Define a y value holder
-        dose_y_vals = np.nan
-
-        # Get the y values 
-        if (model == "Logistic"):
-            dose_y_vals = run_fitted_model(logistic_fun)
-        elif (model == "Gamma"):
-            dose_y_vals = run_fitted_model(gamma_fun)
-        elif (model == "Weibull"):
-            dose_y_vals = run_fitted_model(weibull_fun)
-        elif (model == "Log Logistic"):
-            dose_y_vals = run_fitted_model(log_logistic_fun)
-        elif (model == "Probit"):
-            dose_y_vals = run_fitted_model(probit_fun)
-        elif (model == "Log Probit"):
-            dose_y_vals = run_fitted_model(log_probit_fun)
-        elif (model == "Multistage"):
-            dose_y_vals = run_fitted_model(multistage_2_fun)
-        elif (model == "Quantal Linear"):
-            dose_y_vals = run_fitted_model(quantal_linear_fun)
-
-        return(pd.DataFrame({
-            "Chemical_ID": [ID.split(" ")[0]] * len(dose_x_vals),
-            "End_Point": [ID.split(" ")[1]] * len(dose_x_vals),
-            "X_vals": dose_x_vals,
-            "Y_vals": np.round(dose_y_vals, 8)
-        }))
-
-    Fits_List = []
-    for ID in self.plate_groups["bmdrc.Endpoint.ID"].unique():
-        Fits_List.append(calc_fits(ID))
-
-    Fits_Final = pd.concat(Fits_List)
-    Fits_Final["bmdrc.Endpoint.ID"] = Fits_Final["Chemical_ID"] + " " + Fits_Final["End_Point"]
+                "Y_vals": np.nan,
+                "bmdrc.Endpoint.ID": endpoint_id
+            }, index = [0])
+        )
+        
+    # Make final table and store outputs
+    Fits_Final = pd.concat(all_fits).reset_index(drop = True)
     self.output_res_fits_table = Fits_Final
 
     if path is not None:
