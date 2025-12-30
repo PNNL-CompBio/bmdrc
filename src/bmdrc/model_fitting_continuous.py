@@ -462,7 +462,7 @@ class ExpReg_Cont(GenReg_Cont):
     # Update the model equation
     def model_equation(self, x, a, b):
         '''Internal function to fit the curve'''
-        return self.fixed_intercept + (a * (np.exp(b * x) - 1))
+        return self.fixed_intercept + a * (np.exp(b * x) - 1)
     
     # Update the x prediction
     def predict_x(self, y):
