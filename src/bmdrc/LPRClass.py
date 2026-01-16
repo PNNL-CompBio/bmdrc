@@ -98,6 +98,7 @@ class LPRClass(DataClass):
             raise Exception(chemicalname + " is not in the column names of df.")
         if chemicalname in self.unacceptable:
             raise Exception(chemicalname + " is not a permitted name. Please rename this column.")
+        self._df[chemicalname] = self._df[chemicalname].astype(str)
         self._chemical = chemicalname
 
     @plate.setter
@@ -232,8 +233,10 @@ class LPRClass(DataClass):
         LPR_plateGroups = the_df[[self._chemical, self._plate, self._concentration, the_value]]
         LPR_zero = LPR_plateGroups[LPR_plateGroups[self._concentration] == 0].groupby([self._chemical, self._plate])
 
+        # We can also try median
+
         # Pull quartile calculations
-        rangeValues = LPR_zero.apply(lambda df: df[the_value].quantile(0.25)).reset_index().rename(columns = {0:"Q1"})
+        rangeValues = LPR_zero.apply(lambda df: df[the_value].quantile(0.5)).reset_index().rename(columns = {0:"Q1"})
         rangeValues["Q3"] = LPR_zero.apply(lambda df: df[the_value].quantile(0.75)).reset_index()[0]
 
         # Add IQR and lower and upper bonds. 

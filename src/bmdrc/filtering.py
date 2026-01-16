@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+import ipdb
+
 __author__ = "David Degnan"
 
 def make_plate_groups(self):
@@ -260,7 +262,7 @@ def min_concentration(self, count: int, apply: bool, diagnostic_plot: bool):
     #############################
 
     else:
-        
+
         # Get list of endpoints to remove
         EndpointRemoval = ConcCount.loc[ConcCount["NumConc"] < count, "bmdrc.Endpoint.ID"].tolist()
 
