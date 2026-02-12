@@ -106,7 +106,7 @@ def dose_table(self, path: str):
     dose_table = dose_table.rename({self.chemical: "Chemical_ID", 
                                     self.endpoint: "End_Point", 
                                     self.concentration: "Dose",
-                                    "mean": "Mean",
+                                    "mean": "Response",
                                     "Low": "CI_Lo",
                                     "High": "CI_Hi"}, axis = 1)
 

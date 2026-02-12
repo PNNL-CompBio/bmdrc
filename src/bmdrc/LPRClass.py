@@ -236,7 +236,7 @@ class LPRClass(DataClass):
         # We can also try median
 
         # Pull quartile calculations
-        rangeValues = LPR_zero.apply(lambda df: df[the_value].quantile(0.5)).reset_index().rename(columns = {0:"Q1"})
+        rangeValues = LPR_zero.apply(lambda df: df[the_value].quantile(0.25)).reset_index().rename(columns = {0:"Q1"})
         rangeValues["Q3"] = LPR_zero.apply(lambda df: df[the_value].quantile(0.75)).reset_index()[0]
 
         # Add IQR and lower and upper bonds. 
@@ -246,7 +246,7 @@ class LPRClass(DataClass):
         rangeValues = rangeValues[[self._chemical, self._plate, "Low", "High"]]
 
         LPR_plateGroups = pd.merge(LPR_plateGroups, rangeValues)
-        LPR_plateGroups["result"] = (LPR_plateGroups[the_value] < 0) | (LPR_plateGroups[the_value] < LPR_plateGroups["Low"]) | (LPR_plateGroups[the_value] > LPR_plateGroups["High"])
+        LPR_plateGroups["result"] = (LPR_plateGroups[the_value] < 0) | (LPR_plateGroups[the_value] <= LPR_plateGroups["Low"]) | (LPR_plateGroups[the_value] >= LPR_plateGroups["High"])
 
         return(LPR_plateGroups["result"].astype(float))
     
