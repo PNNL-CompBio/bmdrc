@@ -1,0 +1,31 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: bmdrc
+  title: bmdrc (BenchMark Dose Response Curves)
+  description: Python library for the calculation of BenchMark Dose Response Curves
+  annotations:
+    # Conditional host-specific annotations rendered to avoid empty-string values that fail catalog validation.
+    github.com/project-slug: PNNL-CompBio/bmdrc
+  links:
+    - title: bmdrc Repository
+      url: https://github.com/PNNL-CompBio/bmdrc
+    - title: bmdrc Publication
+      url: https://pubmed.ncbi.nlm.nih.gov/40720503/
+  tags:
+    - python
+    - python-library
+    - benchmark-dose-response-curves
+spec:
+  type: library
+  owner: user:default/david.degnan_pnnl.gov # David Degnan project contributor
+  visibility: private # to expose this item in the catalog to others at PNNL, change the visibility to 'public'
+  # system: 
+  lifecycle: production
+  visibility: private
+
+  # TODO: does bmdrc depend on another resource or component?
+  # dependsOn:
+
+  # TODO: does another resource depend on bmdrc? 
+  # dependencyOf:
