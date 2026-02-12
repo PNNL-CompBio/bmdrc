@@ -20,8 +20,8 @@ def benchmark_dose(self, path: str):
     ## Flag meanings:
     ## 0 - failed minimum concentration filter
     ## 1 - failed other filter
-    ## 2 - Passes all filters, p-value on spearman above 0.32
-    ## 4 - Passes all filters, p-value on spearman below or equal to 0.32
+    ## 2 - Passes all filters, p-value on GOF
+    ## 4 - Passes all filters, p-value on GOF below or equal to 0.32
 
     BMDS = self.bmds
 
@@ -80,7 +80,7 @@ def benchmark_dose(self, path: str):
         pvalue_fails = pvalue_fails.groupby("bmdrc.Endpoint.ID")
 
         # Calculate values 
-        pvalue_bmds = pvalue_fails.apply(lambda df: np.trapz(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
+        pvalue_bmds = pvalue_fails.apply(lambda df: np.trapezoid(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
         pvalue_bmds[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
         pvalue_bmds["Min_Dose"] = round(pvalue_fails[["bmdrc.Endpoint.ID", self.concentration]].min(self.concentration).reset_index()[self.concentration], 4)
         pvalue_bmds["Max_Dose"] = round(pvalue_fails[["bmdrc.Endpoint.ID", self.concentration]].max(self.concentration).reset_index()[self.concentration], 4)
@@ -140,11 +140,13 @@ def dose_table(self, path: str):
     # Add 95% confidence intervals
     dose_table["Low"] = np.nan
     dose_table["High"] = np.nan
+    dose_table["Response"] = np.nan
 
     # Add confidence intervals 
     for row in range(len(dose_table)):
         NumAffected = dose_table["bmdrc.num.affected"][row]
         NumNonNa = dose_table["bmdrc.num.nonna"][row]
+        dose_table["Response"][row] = np.round(NumAffected / NumNonNa, 8)
         if NumNonNa != 0:
             CI = astrostats.binom_conf_interval(NumAffected, NumNonNa, confidence_level = 0.95)
             dose_table["Low"][row] = np.round(CI[0], 8) 

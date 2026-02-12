@@ -77,11 +77,11 @@ LPR Class
 Simplified Class
 ****************
 
-.. autoclass:: bmdrc.SimplifiedClass.SimplifiedClass
+.. autoclass:: bmdrc.ProportionalClass.ProportionalClass
 
 .. code-block:: python
 
-   SimplifiedClass(
+   ProportionalClass(
       df = pd.read_table("path/to/proportions.csv"), # Input is a pandas DataFrame
       chemical = "chemical.id", # The name of the chemical column 
       endpoint = "endpoint", # The name of the column with endpoints

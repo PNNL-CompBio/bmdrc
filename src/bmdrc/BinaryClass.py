@@ -15,7 +15,7 @@ __author__ = "David Degnan"
 
 class DataClass(object):
     '''
-    An abstract class for all bmdrc accepted datatypes
+    An abstract class for some bmdrc datatypes
     '''
     
     ############################
@@ -51,8 +51,8 @@ class DataClass(object):
         min_concentration(self, count, apply, diagnostic_plot)
 
     @abstractmethod
-    def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False):
-        correlation_score(self, score, apply, diagnostic_plot)
+    def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False, direction = "below"):
+        correlation_score(self, score, apply, diagnostic_plot, direction)
 
     ###########################
     ## MODEL FITTING MODULES ##
@@ -88,7 +88,7 @@ class DataClass(object):
 
 class BinaryClass(DataClass):
     '''
-    Generates a bmdrc object where input values are either a 0, 1, or NA. For propotional data, use SimplifiedClass().
+    Generates a bmdrc object where input values are either a 0, 1, or NA. For propotional data, use ProportionalClass().
 
     
     Parameters

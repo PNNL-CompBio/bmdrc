@@ -2,11 +2,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+import ipdb
+
 __author__ = "David Degnan"
 
 def make_plate_groups(self):
     '''
     Support function for the filter modules. Assign groups based on the chemical, concentration, plate, and endpoint. This step should be completed after all pre-processing steps are finished. 
+    This is pertinent to data collected on plates with wells (BinaryClass and LPRClass). Cases where there are no plates (ProportionalClass and ContinuousClass) have a variable assigned called
+    "NoClass". This does not disrupt any functionality, and prevents duplicative code.
     '''
 
     # If the data is BinaryClass where plate and well information is available, do the following
@@ -30,7 +34,7 @@ def make_plate_groups(self):
         # Merge to create missingness dataframe
         self.plate_groups = pd.merge(pd.merge(num_tot_samples, num_nonna), num_affected)
 
-    # Else the data is SimplifiedClass
+    # Else the data is ProportionalClass
     else:
 
         # Keep just the required columns 
@@ -258,7 +262,7 @@ def min_concentration(self, count: int, apply: bool, diagnostic_plot: bool):
     #############################
 
     else:
-        
+
         # Get list of endpoints to remove
         EndpointRemoval = ConcCount.loc[ConcCount["NumConc"] < count, "bmdrc.Endpoint.ID"].tolist()
 
@@ -267,7 +271,7 @@ def min_concentration(self, count: int, apply: bool, diagnostic_plot: bool):
             self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(EndpointRemoval), "bmdrc.filter.reason"] + " min_concentration_filter"
 
 
-def __correlation_score_plot(correlation_score, threshold):
+def __correlation_score_plot(correlation_score, threshold, between: bool = False):
     '''
     Support function for the filter modules. 
     Returns the distribution of correlation scores. 
@@ -300,11 +304,15 @@ def __correlation_score_plot(correlation_score, threshold):
     plt.ylabel("Count")
 
     # Add line at correlation
-    plt.axvline(x = threshold, color = "red")
+    if between:
+        plt.axvline(x = abs(threshold), color = "red")
+        plt.axvline(x = -1 * abs(threshold), color = "red")
+    else:
+        plt.axvline(x = threshold, color = "red")
 
-    return fig
+    return(fig)
 
-def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool): 
+def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool, direction: str = "below"): 
     '''
     Filter to remove endpoints with low correlation score thresholds.
 
@@ -318,7 +326,10 @@ def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool):
 
     diagnostic_plot
         A boolean to determine whether to make a diagnostic plot if apply is False. Default is False.
-    
+
+    direction
+        Whether the removed data should be "below" or "above" the threshold. Users may also specify
+        "between" where values are removed between the threshold and -1 * the threshold.
     '''
 
     ##################
@@ -379,13 +390,23 @@ def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool):
     # Set the filter to leep
     CorScore["Filter"] = "Keep"
 
-    # Filter cases with less than 0.2 as their correlation score
-    CorScore.loc[CorScore["Spearman"] < score, "Filter"] = "Remove"
+    # Filter cases dependent on the user specified threshold (score) and direction (default is below)
+    if direction == "below":
+        CorScore.loc[CorScore["Spearman"] < score, "Filter"] = "Remove"
+        between = False
+    elif direction == "above":
+        CorScore.loc[CorScore["Spearman"] > score, "Filter"] = "Remove"
+        between = False
+    elif direction == "between":
+        CorScore.loc[((CorScore["Spearman"] < abs(score)) & (CorScore["Spearman"] > -1 * abs(score))), "Filter"] = "Remove"
+        between = True
+    else:
+        raise ValueError(print(direction, " is not recognized as a valid input for direction. Currently only 'below', 'above', or 'between' are accepted."))
 
     # Add correlation summary object to object
     self.filter_correlation_score_df = CorScore
     self.filter_correlation_score_thresh = score
-    self.filter_correlation_score_plot = __correlation_score_plot(CorScore, score)
+    self.filter_correlation_score_plot = __correlation_score_plot(CorScore, score, between)
 
     #######################
     ## RETURN DIAGNOSTIC ##

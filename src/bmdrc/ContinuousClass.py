@@ -4,16 +4,32 @@ from abc import abstractmethod
 
 from .preprocessing import remove_endpoints
 from .filtering import min_concentration, correlation_score
-from .model_fitting import fit_the_models, gen_response_curve, fits_table
-from .output_modules import benchmark_dose, dose_table, report_binary
+from .model_fitting_continuous import fit_continuous_models, gen_response_curve, fits_table
+from .output_modules_continuous import benchmark_dose, dose_table
 
 __author__ = "David Degnan"
 
-
-class HalfClass(object):
+class ContinuousClass():
     '''
-    Class for fitting any data with a response from 0 to 1. 
-    Does not contain all the pre-processing & filtering options of BinaryClass.
+    Generates a bmdrc object for continuous (numerical) data. Data must be in long format.
+
+    Parameters
+    ----------
+    df
+        A pandas dataframe containing columns with chemical, concentration, endpoint, and response information.
+
+    chemical
+        A string indicating the name of the column containing the chemical IDs, which should be strings.
+
+    concentration
+        A string indicating the name of the column containing the concentrations, which should be numerics.
+
+    endpoint
+        A string indicating the name of the column containing endpoints, which should be strings. 
+
+    response
+        A string indicating the name of the column containing the response values, which can be any numeric values.
+        NA responses are removed.
     '''
 
     ############################
@@ -33,20 +49,21 @@ class HalfClass(object):
         min_concentration(self, count, apply, diagnostic_plot)
 
     @abstractmethod
-    def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False):
-        correlation_score(self, score, apply, diagnostic_plot)
+    def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False, direction = "below"):
+        correlation_score(self, score, apply, diagnostic_plot, direction)
 
     ###########################
     ## MODEL FITTING MODULES ##
     ###########################
 
     @abstractmethod
-    def fit_models(self, gof_threshold = 0.1, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False):
-        fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode)
+    def fit_models(self, fixed_intercept = 0, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False):
+        fit_continuous_models(self, fixed_intercept, aic_threshold, model_selection, diagnostic_mode)
 
+    
     @abstractmethod
-    def response_curve(self, chemical_name, endpoint_name, model, steps = 10):
-        gen_response_curve(self, chemical_name, endpoint_name, model, steps)
+    def response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds = False, steps = 10):
+        gen_response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds, steps)
 
     ####################
     ## OUTPUT MODULES ##
@@ -61,47 +78,24 @@ class HalfClass(object):
         dose_table(self, path)
 
     @abstractmethod
-    def output_fits_table(self, path = None):
-        fits_table(self, path)
+    def output_fits_table(self, fixed_intercept, path = None):
+        fits_table(self, fixed_intercept, path)
 
-    @abstractmethod
-    def report(self, out_folder, report_name = "Benchmark Dose Curves"):
-        report_binary(self, out_folder, report_name)
+    #####################
+    ## INIT DEFINITION ##
+    #####################
 
-class SimplifiedClass(HalfClass):
-    '''
-    Generates a bmdrc object from proportions (ranging from 0 to 1). Does not contain the pre-processing & filtering options of BinaryClass.
-
-    Parameters
-    ----------
-    df
-        A pandas dataframe containing columns with chemical, concentration, endpoint, and response information.
-
-    chemical
-        A string indicating the name of the column containing the chemical IDs, which should be strings
-
-    concentration
-        A string indicating the name of the column containing the concentrations, which should be numerics
-
-    endpoint
-        A string indicating the name of the column containing endpoints, which should be strings. 
-
-    response
-        A string indicating the name of the column containing the response values, which should range from 0 to 1.
-
-    '''
-
-    # Define the input checking functions 
+      # Define the input checking functions 
     def __init__(self, df, chemical, concentration, endpoint, response):
         self.df = df
         self.chemical = chemical
         self.concentration = concentration
         self.endpoint = endpoint
         self.response = response
-        self.plate = "plate"
+        self.plate = "plate" # Placeholder to enable specific functions to run
         self.unacceptable = ["bmdrc.Well.ID", "bmdrc.num.tot", "bmdrc.num.nonna", "bmdrc.num.affected", \
-                            "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
-                            "bmdrc.frac.affected"]
+                             "bmdrc.Plate.ID", "bmdrc.Endpoint.ID", "bmdrc.filter", "bmdrc.filter.reason", \
+                             "bmdrc.frac.affected"]
     
     # Set property returning functions 
     df = property(operator.attrgetter('_df'))
@@ -123,7 +117,7 @@ class SimplifiedClass(HalfClass):
             raise Exception("df must be a pandas DataFrame.")
         if theDF.empty:
             raise Exception("df cannot be empty. Please provide a pandas DataFrame.")
-        theDF["plate"] = "NoPlate"
+        theDF["plate"] = "NoPlate" # There is no plate information to track
         self._df = theDF
 
     @chemical.setter
@@ -178,8 +172,5 @@ class SimplifiedClass(HalfClass):
         if responsename in self.unacceptable:
             raise Exception(responsename + " is not a permitted name. Please rename this column.")
         self._df[responsename] = pd.to_numeric(self._df[responsename])
-        if min(self._df[responsename]) < 0 or max(self._df[responsename]) > 1:
-            raise Exception("The response column must range in values from 0 to 1. Filter out NAs before using the SimplifiedClass.")
         self._response = responsename
-        
 

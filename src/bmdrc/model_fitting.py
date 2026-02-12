@@ -8,6 +8,8 @@ from statsmodels.base.model import GenericLikelihoodModel
 
 from . import filtering
 
+import ipdb
+
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -606,7 +608,7 @@ def _removed_endpoints_stats(self):
         low_quality = low_quality.groupby("bmdrc.Endpoint.ID")
 
         # Calculate values 
-        bmds_filtered = low_quality.apply(lambda df: np.trapz(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
+        bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
         bmds_filtered["Min_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].min(self.concentration).reset_index()[self.concentration], 4)
         bmds_filtered["Max_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].max(self.concentration).reset_index()[self.concentration], 4)
@@ -675,7 +677,7 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
 
         # Calculate P-Value Function
         def calc_p_value(PredictedValues, Params):
-            '''Return a p-value of model fit for each unique ID and Model dataframe pairing'''
+            '''Return a p-value of model fit (Goodness of Fit) for each unique ID and Model dataframe pairing'''
 
             # Get the experimental values 
             ExperimentalValues = sub_data["bmdrc.frac.affected"].tolist()
@@ -1024,7 +1026,7 @@ def _calc_fit_statistics(self):
         Data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == id]
         
         # Get the AUC, min, and max dose 
-        AUC = np.trapz(Data["bmdrc.frac.affected"], x = Data[self.concentration])
+        AUC = np.trapezoid(Data["bmdrc.frac.affected"], x = Data[self.concentration])
         Min_Dose = round(min(Data[self.concentration]), 4)
         Max_Dose = round(max(Data[self.concentration]), 4)
 
@@ -1062,7 +1064,6 @@ def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selec
 
     diagnostic_mode
         A boolean to indicate whether diagnostic messages should be printed. Default is False
-
     '''
 
     ##################
@@ -1072,7 +1073,7 @@ def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selec
     # GOF threshold must be greater than 0 or less than 1
     if gof_threshold < 0 or gof_threshold > 1:
         print("gof_threshold must be larger than 0 or less than 1.")
-        gof_threshold = 0.2
+        gof_threshold = 0.1
     
     # Assert that model_selection is "lowest BMDL"
     if (model_selection != "lowest BMDL"):
@@ -1141,7 +1142,7 @@ def _curve_plot(self, to_model, curve, chemical_name, endpoint_name, model):
 
 def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str, steps: int):
     '''
-    Generate the x and y coordinates of a specific curve, and optionally a plot 
+    Generate the x and y coordinates of a specific curve and a plot, which are stored as object attributes
 
     Parameters
     ----------
@@ -1182,8 +1183,8 @@ def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str,
 
     # Subset plate groups to the id
     the_subset = self.plate_groups[(self.plate_groups[self.chemical] == chemical_name) & 
-                                 (self.plate_groups[self.endpoint] == endpoint_name) &  
-                                 (self.plate_groups["bmdrc.filter"] == "Keep")]
+                                   (self.plate_groups[self.endpoint] == endpoint_name) &  
+                                   (self.plate_groups["bmdrc.filter"] == "Keep")]
 
     # Pull only the columns that are needed
     to_model = the_subset[[self.concentration, "bmdrc.num.nonna", "bmdrc.num.affected"]]

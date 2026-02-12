@@ -117,9 +117,8 @@ class LPRClass(DataClass):
         if not chemicalname in self._df.columns:
             raise Exception(chemicalname + " is not in the column names of df.")
         if chemicalname in self.unacceptable:
-            raise Exception(
-                chemicalname + " is not a permitted name. Please rename this column."
-            )
+            raise Exception(chemicalname + " is not a permitted name. Please rename this column.")
+        self._df[chemicalname] = self._df[chemicalname].astype(str)
         self._chemical = chemicalname
 
     @plate.setter
@@ -273,6 +272,8 @@ class LPRClass(DataClass):
             [self._chemical, self._plate]
         )
 
+        # We can also try median
+
         # Pull quartile calculations
         rangeValues = (
             LPR_zero.apply(lambda df: df[the_value].quantile(0.25))
@@ -290,13 +291,7 @@ class LPRClass(DataClass):
         rangeValues = rangeValues[[self._chemical, self._plate, "Low", "High"]]
 
         LPR_plateGroups = pd.merge(LPR_plateGroups, rangeValues)
-        LPR_plateGroups["result"] = (
-            (LPR_plateGroups[the_value] < 0)
-            | (LPR_plateGroups[the_value] < LPR_plateGroups["Low"])
-            | (LPR_plateGroups[the_value] > LPR_plateGroups["High"])
-        )
-
-        return LPR_plateGroups["result"].astype(float)
+        LPR_plateGroups["result"] = (LPR_plateGroups[the_value] < 0) | (LPR_plateGroups[the_value] <= LPR_plateGroups["Low"]) | (LPR_plateGroups[the_value] >= LPR_plateGroups["High"])
 
     # LPR-specific function: Calculate AUC values
     def calculate_aucs(self, cycles):
