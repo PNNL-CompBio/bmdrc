@@ -8,8 +8,6 @@ from statsmodels.base.model import GenericLikelihoodModel
 
 from . import filtering
 
-import ipdb
-
 import warnings
 warnings.filterwarnings('ignore')
 
