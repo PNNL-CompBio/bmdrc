@@ -3,7 +3,7 @@ import pandas as pd
 from abc import abstractmethod
 
 from .preprocessing import remove_endpoints
-from .filtering import min_concentration, correlation_score
+from .filtering import min_concentration, correlation_score, negative_control_continuous
 from .model_fitting_continuous import fit_continuous_models, gen_response_curve, fits_table
 from .output_modules_continuous import benchmark_dose, dose_table
 
@@ -51,6 +51,10 @@ class ContinuousClass():
     @abstractmethod
     def filter_correlation_score(self, score = 0.2, apply = False, diagnostic_plot = False, direction = "below"):
         correlation_score(self, score, apply, diagnostic_plot, direction)
+
+    @abstractmethod
+    def filter_negative_control(self, apply = False, diagnostic_plot = False):
+        negative_control_continuous(self, apply, diagnostic_plot)
 
     ###########################
     ## MODEL FITTING MODULES ##
