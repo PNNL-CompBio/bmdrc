@@ -211,8 +211,7 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
 
         ## Combine & Make New Endpoints----------------------------------------------------------------------------- 
 
-        try:
-
+        if hasattr(self, "report_combination"):
             out_string = out_string + "New endpoints were made using existing endpoints using 'or', which means that" + \
             " if there is any endpoints with a '1', this new endpoint will also have a '1', regardless of" + \
             " how many zeroes there are in the other endpoints. See a summary table of added endpoints below:\n\n"
@@ -225,14 +224,12 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
                 the_combined = the_combined + "|" + key + value_collapse[0:(len(value_collapse)-2)] + "|\n"
             the_combined = the_combined + "\n"
             out_string = out_string + the_combined + "#### **Set Invalid Wells to NA**\n\n"
-
-        except:
+        else:
             out_string = out_string + "This step was not conducted.\n\n#### **Set Invalid Wells to NA**\n\n"
 
         # Set Invalid Wells to NA-----------------------------------------------------------------------------------
             
-        try:
-
+        if hasattr(self, "report_well_na"):
             out_string = out_string + "In some cases, like when a sample fish dies, many affected endpoints" + \
                         " need to be set to NA. Here, the 'Endpoint Name' column denotes the specific" + \
                         " endpoint that sets this rule. In this example, it could be MORT for mortality." + \
@@ -266,23 +263,19 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             endpoints = endpoints + "\n#### **Remove Invalid Endpoints**\n\n"
 
             out_string = out_string + endpoints
-
-        except:
+        else:
             out_string = out_string + "This step was not conducted.\n\n#### **Remove Invalid Endpoints**\n\n"
 
         # Remove Invalid Endpoints---------------------------------------------------------------------------------
             
-        try:
-
+        if hasattr(self, "report_endpoint_removal"):
             the_removed = ""
             for removed in self.report_endpoint_removal:
                 the_removed = the_removed + removed + ", "
             the_removed = the_removed[0:(len(the_removed)-2)]
 
             out_string = out_string + "The following endpoints were removed: " + the_removed + "\n\n"
-
-        except:
-
+        else:
             out_string = out_string + "This step was not conducted.\n\n"
 
         out_string = out_string + "## Filtering\n\n#### **Negative Control Filter**\n\n"
@@ -293,8 +286,7 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
 
         # Negative Control Filter------------------------------------------------------------------------------------
 
-        try:
-
+        if hasattr(self, "filter_negative_control_df"):
             out_string = out_string + "Plates with unusually high responses in negative control samples were filtered." +\
                         " The response threshold was set to **" + str(self.filter_negative_control_thresh)  + "**. See a summary below:\n\n"
             
@@ -311,14 +303,12 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
 
             out_string = out_string + fnc_table + "\nAnd here is the plot:\n![Filter Negative Control](./filter_negative_control.png)\n"
             out_string = out_string +  "\n#### **Minimum Concentration Filter**\n\n"
-
-        except:
+        else:
             out_string = out_string + "This step was not conducted.\n\n#### **Minimum Concentration Filter**\n\n"
 
         # Minimum Concentration Filter--------------------------------------------------------------------------------
             
-        try:
-
+        if hasattr(self, "filter_min_concentration_df"):
             out_string = out_string + "Endpoints with too few concentration measurements (non-NA) to model are removed." +\
                         " The minimum was set to **" + str(self.filter_min_concentration_thresh)  + "**. See a summary below:\n\n"
             
@@ -335,15 +325,12 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
 
             out_string = out_string + mc_table + "\nAnd here is the plot:\n![Filter Minimum Concentration](./filter_minimum_concentration.png)\n"
             out_string = out_string +  "\n#### **Correlation Score Filter**\n\n"
-
-        except:
-
+        else:
             out_string = out_string + "This step was not conducted.\n\n#### **Correlation Score Filter**\n\n"
 
         # Correlation Score Filter----------------------------------------------------------------------------------
             
-        try:
-
+        if hasattr(self, "filter_correlation_score_df"):
             out_string = out_string + "Endpoints with little to no positive correlation with dose are unexpected" +\
                         " and should be removed. The correlation threshold was set to **" + str(self.filter_correlation_score_thresh)  + "**. See a summary below:\n\n"
             
@@ -365,17 +352,14 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             self.filter_correlation_score_plot.savefig(out_folder + "/" + "filter_correlation_score.png")
 
             out_string = out_string + cs_table + "\nAnd here is the plot:\n![Filter Correlation Score](./filter_correlation_score.png)\n\n## Model Fitting & Output Modules\n\n#### **Filter Summary**\n\n"
-
-        except:
-
+        else:
             out_string = out_string + "This step was not conducted.\n\n## Model Fitting & Output Modules\n\n#### **Filter Summary**\n\n"
             
         ###################
         ## MODEL FITTING ##
         ###################
             
-        try:
-        
+        if hasattr(self, "bmds") and hasattr(self, "plate_groups"):
             # Filter Summary-------------------------------------------------------------------------------------
                 
             # Get removal and kept counts --> remove filtered options
@@ -385,7 +369,7 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             total = removed + kept
 
             # Also count those failing to meet GOF
-            failed_p_val = len(self.failed_pvalue_test)
+            failed_p_val = len(self.failed_pvalue_test) if hasattr(self, "failed_pvalue_test") else 0
 
             out_string = out_string + "Overall, " + str(total) + " endpoint and chemical combinations were considered. " + str(kept) + \
                         " were deemed eligible for modeling, and " + str(removed) + " were not based on filtering selections explained" + \
@@ -402,19 +386,19 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             
             # Model Quality Summary---------------------------------------------------------------------------------
 
-            out_string = out_string + "Below is a summary table of the number of endpoints with a high quality fit (a flag of 1, meaning that" + \
-                        " the BMD10 value is within the range of measured doses) and those that are not high quality (a flag of 0).\n\n"
+            out_string = out_string + "Below is a summary table of the number of endpoints with a high quality fit and those with poor fit, as defined by each label below.\n\n"
 
             # Make dataframe of flag counts, adding any missing flags
-            dataqc_table = self.bmds[["Model", "DataQC_Flag"]].groupby("DataQC_Flag").count().reset_index().rename({"Model":"Count"}, axis = 1)
-            if ((0 in dataqc_table["DataQC_Flag"].values.tolist()) == False):
-                dataqc_table = pd.concat([dataqc_table, pd.DataFrame({"DataQC_Flag":[0], "Count":[0]})])
-            if ((1 in dataqc_table["DataQC_Flag"].values.tolist()) == False):
-                dataqc_table = pd.concat([dataqc_table, pd.DataFrame({"DataQC_Flag":[1], "Count":[0]})])
+            try:
+                if self.output_res_benchmark_dose is None:
+                    self.output_benchmark_dose()
+            except:
+                self.output_res_benchmark_dose = pd.DataFrame({"Model":[], "DataQC_Flag":[]})
+            
+            dataqc_table = self.output_res_benchmark_dose["DataQC_Flag"].value_counts().reset_index().rename({"Model":"Count"}, axis = 1)
 
             # Add flag counts 
-            out_string = out_string + "|Flag|Count|\n|---|---|\n|0|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 0]["Count"].values[0]) + "|\n" + \
-                        "|1|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 1]["Count"].values[0]) + "|\n\n#### **Output Modules**\n\nBelow, see a table of" + \
+            out_string = out_string + dataqc_table.to_markdown(index=False) + "\n\n#### **Output Modules**\n\nBelow, see a table of" + \
                         " useful methods for extracting outputs from bmdrc.\n\n"
             
             # Add useful parameters 
@@ -424,9 +408,7 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
                         "|.p_value_df|Table of goodness of fit p-values for every eligible endpoint|\n" + \
                         "|.aic_df|Table of Akaike Information Criterion values for every eligible endpoint|\n" + \
                         "|.response_curve|Plot a benchmark dose curve for an endpoint|\n\n"
-            
-        except:
-
+        else:
             out_string = out_string + "Model fits were not conducted."
             
         file = open(out_folder + "/" + report_name + ".md", "w")
