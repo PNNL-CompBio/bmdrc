@@ -1,5 +1,4 @@
 import operator
-import re
 from abc import abstractmethod
 
 import numpy as np
@@ -7,43 +6,33 @@ import pandas as pd
 
 from .BinaryClass import BinaryClass, DataClass
 
+
 class LPRClass(DataClass):
     """
     Generates a bmdrc object from larval photomotor response data, which must be in long format.
 
     Parameters
     ----------
-
     df
         A pandas dataframe containing columns with the chemical, concentration, plate, well, time, and value information.
-
     chemical
         A string indicating the name of the column containing the chemical IDs, which should be strings
-
     plate
         A string indicating the name of the column indicating the plate IDs, which should be strings
-
     well
         A string indicating the name of the column with the well IDs, which should be strings
-
     concentration
         A string indicating the name of the column containing the concentrations, which should be numerics
-
     time
         A string indicating the name of the column containing time, which should be a string or integer. Strings should contain a number.
-
     value
         A string indicating the name of the column containing the binary values, which should be 0 for absent, and 1 for present. Not used if the light photomotor response
-
-    cycle_time
+    cycle_length
         A numeric for the length of a light or dark cycle. Default is 20. The unit is a 6-second measure, so 20 six second measures is 2 minutes.
-
     cycle_cooldown
         A numeric for the length of time between cycles. Default is 10. The unit is a 6-second measure, so 10 six second measures is 1 minute.
-
     starting_cycle
         A string of either the "light" or "dark" cycle depending on whether the first measurement was a light or dark cycle. Default is "light".
-
     """
 
     # Define the input checking functions. Include raw and transformed data.frames
@@ -84,6 +73,7 @@ class LPRClass(DataClass):
     cycle_cooldown = property(operator.attrgetter("_cycle_cooldown"))
     starting_cycle = property(operator.attrgetter("_starting_cycle"))
     cycles = property(operator.attrgetter("_cycle"))
+
     unacceptable = [
         "bmdrc.Well.ID",
         "bmdrc.num.tot",
@@ -117,7 +107,9 @@ class LPRClass(DataClass):
         if not chemicalname in self._df.columns:
             raise Exception(chemicalname + " is not in the column names of df.")
         if chemicalname in self.unacceptable:
-            raise Exception(chemicalname + " is not a permitted name. Please rename this column.")
+            raise Exception(
+                chemicalname + " is not a permitted name. Please rename this column."
+            )
         self._df[chemicalname] = self._df[chemicalname].astype(str)
         self._chemical = chemicalname
 
@@ -226,6 +218,7 @@ class LPRClass(DataClass):
         gap_b_count = 0
         second_count = 0
         cycle_count = 1
+
         if self._starting_cycle == "light":
             other_cycle = "dark"
         else:
@@ -259,39 +252,78 @@ class LPRClass(DataClass):
         # Merge with data.frame
         self._cycles = cycle_info
         self._max_cycle = cycle_count
+
         return self._df.merge(cycle_info)
 
-    # LPR-specific function: Converts continuous to dichotomous following: https://www.sciencedirect.com/science/article/pii/S2468111318300732
     def to_dichotomous(self, the_df, the_value):
-        """Specific LPR function that converts continuous AUC or MOV to dichotomous"""
+        """
+        Converts continuous AUC or MOV values to dichotomous (0/1) classification.
 
-        LPR_plateGroups = the_df[
-            [self._chemical, self._plate, self._concentration, the_value]
+        Per the paper methodology:
+        - Thresholds are computed from ONLY the normally responding (positive-valued) control fish.
+        - Control fish are classified as abnormal ONLY if their value is negative (hypoactive).
+        - Chemical-exposed fish are classified as abnormal if:
+            (a) their value is negative (hypoactive), OR
+            (b) their positive value is an outlier relative to the normal control distribution
+                (above Q3 + 1.5*IQR or below Q1 - 1.5*IQR using Tukey's method).
+
+        Returns a numpy array of 0/1 values aligned positionally with the input DataFrame.
+        """
+
+        working = the_df[[self._chemical, self._plate, self._concentration, the_value]].copy()
+
+        # --------------------------------------------------------------------------
+        # Step 1: Compute outlier thresholds from ONLY normally responding controls
+        #         (positive endpoint values in the control group)
+        # --------------------------------------------------------------------------
+        positive_controls = working[
+            (working[self._concentration] == 0) & (working[the_value] > 0)
         ]
-        LPR_zero = LPR_plateGroups[LPR_plateGroups[self._concentration] == 0].groupby(
-            [self._chemical, self._plate]
-        )
 
-        # We can also try median
-
-        # Pull quartile calculations
-        rangeValues = (
-            LPR_zero.apply(lambda df: df[the_value].quantile(0.25))
+        # If there are no positive controls for a chemical-plate, thresholds will be NaN
+        # (handled gracefully by the left merge below)
+        thresholds = (
+            positive_controls.groupby([self._chemical, self._plate])[the_value]
+            .agg(Q1=lambda x: x.quantile(0.25), Q3=lambda x: x.quantile(0.75))
             .reset_index()
-            .rename(columns={0: "Q1"})
         )
-        rangeValues["Q3"] = LPR_zero.apply(
-            lambda df: df[the_value].quantile(0.75)
-        ).reset_index()[0]
+        thresholds["IQR"] = thresholds["Q3"] - thresholds["Q1"]
+        thresholds["Low"] = thresholds["Q1"] - (1.5 * thresholds["IQR"])
+        thresholds["High"] = thresholds["Q3"] + (1.5 * thresholds["IQR"])
+        thresholds = thresholds[[self._chemical, self._plate, "Low", "High"]]
 
-        # Add IQR and lower and upper bonds.
-        rangeValues["IQR"] = rangeValues["Q3"] - rangeValues["Q1"]
-        rangeValues["Low"] = rangeValues["Q1"] - (1.5 * rangeValues["IQR"])
-        rangeValues["High"] = rangeValues["Q3"] + (1.5 * rangeValues["IQR"])
-        rangeValues = rangeValues[[self._chemical, self._plate, "Low", "High"]]
+        # --------------------------------------------------------------------------
+        # Step 2: Left merge to attach thresholds to all rows.
+        #         Plates with no positive controls get NaN thresholds (only hypoactivity
+        #         can be detected on those plates). Left merge preserves row order.
+        # --------------------------------------------------------------------------
+        merged = working.merge(
+            thresholds, on=[self._chemical, self._plate], how="left"
+        )
 
-        LPR_plateGroups = pd.merge(LPR_plateGroups, rangeValues)
-        LPR_plateGroups["result"] = (LPR_plateGroups[the_value] < 0) | (LPR_plateGroups[the_value] <= LPR_plateGroups["Low"]) | (LPR_plateGroups[the_value] >= LPR_plateGroups["High"])
+        # --------------------------------------------------------------------------
+        # Step 3: Apply DIFFERENT classification rules for controls vs. exposed fish
+        # --------------------------------------------------------------------------
+        is_control = merged[self._concentration] == 0
+        values = merged[the_value]
+        low = merged["Low"]
+        high = merged["High"]
+
+        # Controls: abnormal ONLY if hypoactive (negative value)
+        control_abnormal = values < 0
+
+        # Chemical-exposed: abnormal if hypoactive OR positive outlier
+        exposed_abnormal = (
+            (values < 0)
+            | (values > high)
+            | ((values > 0) & (values < low))
+        )
+
+        # Combine: use control rule for controls, exposed rule for chemical groups
+        result = np.where(is_control, control_abnormal, exposed_abnormal)
+
+        # Return as integer array (0 = normal, 1 = abnormal) aligned positionally
+        return result.astype(int)
 
     # LPR-specific function: Calculate AUC values
     def calculate_aucs(self, cycles):
@@ -299,10 +331,12 @@ class LPRClass(DataClass):
 
         print("...calculating AUC values")
 
-        # Remove gaps
+        # Remove gaps from the AUC calculation (only sum light and dark periods)
         aucs = cycles[~cycles["cycle"].str.contains("gap")].drop(
             labels=self._time, axis=1
         )
+
+        # Sum movement values within each cycle phase for each fish
         aucs = (
             aucs.groupby(
                 by=[
@@ -320,15 +354,14 @@ class LPRClass(DataClass):
         # Initiate list to store all values
         store_aucs = []
 
-        # Iterate through all cycles, subtracting dark from light
+        # Iterate through all cycles, subtracting light AUC from dark AUC
         for cycle_num in range(self._max_cycle):
 
-            # Pull cycle information
             cycle_num = cycle_num + 1
             light_name = "light" + str(cycle_num)
             dark_name = "dark" + str(cycle_num)
 
-            # Merge light and dark information
+            # Merge light and dark sums for each fish
             to_calc_auc = pd.merge(
                 aucs[aucs["cycle"] == light_name]
                 .rename(columns={"value": "light"})
@@ -339,26 +372,32 @@ class LPRClass(DataClass):
                 how="left",
             )
 
-            # Calculate aucs and store
+            # AUC = dark_sum - light_sum (positive = more active in dark = normal)
             to_calc_auc["Cycle"] = "AUC" + str(cycle_num)
             to_calc_auc["AUC"] = to_calc_auc["dark"] - to_calc_auc["light"]
             store_aucs.append(to_calc_auc)
 
-        # Concatenate
+        # Concatenate all cycles
         auc_values = pd.concat(store_aucs).drop_duplicates().dropna()
 
-        # Pivot wider
-        auc_process = auc_values[[self._chemical, self._plate, self._concentration, self._well, "Cycle", "AUC"]].pivot(index=[self._chemical, self._plate, self._concentration, self._well], columns="Cycle", values="AUC").reset_index()
+        # Pivot so each cycle is its own column (AUC1, AUC2, etc.)
+        auc_process = (
+            auc_values[
+                [self._chemical, self._plate, self._concentration, self._well, "Cycle", "AUC"]
+            ]
+            .pivot(
+                index=[self._chemical, self._plate, self._concentration, self._well],
+                columns="Cycle",
+                values="AUC",
+            )
+            .reset_index()
+        )
 
-        # Convert to dichotomous
+        # Convert each AUC column from continuous to dichotomous (0/1)
         for x in range(self._max_cycle):
             value = "AUC" + str(x + 1)
             auc_process[value] = self.to_dichotomous(auc_process, value)
 
-        # Return AUC
-        return auc_process
-
-        # Return AUC
         return auc_process
 
     # LPR-specific function: Calculate MOV values
@@ -367,73 +406,101 @@ class LPRClass(DataClass):
 
         print("...calculating MOV values")
 
-        # Determine gap beginning and end times
+        # Full cycle length (light + gap + dark + gap)
+        full_cycle = (self._cycle_length * 2) + (self._cycle_cooldown * 2)
+
+        # --------------------------------------------------------------------------
+        # Determine the exact time indices for the MOV calculation.
+        # MOV = movement at first dark time point - movement at last light time point
+        #
+        # For starting_cycle == "light":
+        #   Structure: light(0 to CL-1), gap(CL to CL+CC-1), dark(CL+CC to 2*CL+CC-1), gap(...)
+        #   Last light time = (CL - 1) + x * full_cycle
+        #   First dark time = (CL + CC) + x * full_cycle
+        #
+        # For starting_cycle == "dark":
+        #   Structure: dark(0 to CL-1), gap(CL to CL+CC-1), light(CL+CC to 2*CL+CC-1), gap(...)
+        #   Light-to-dark transition spans across cycles:
+        #   Last light time = (2*CL + CC - 1) + x * full_cycle
+        #   First dark time = full_cycle + x * full_cycle = (x+1) * full_cycle
+        # --------------------------------------------------------------------------
         if self._starting_cycle == "light":
-            self._light_gaps = [
-                (self._cycle_length * (x + 1)) + (x * self._cycle_length * 2)
+            self._last_light_times = [
+                (self._cycle_length - 1) + (x * full_cycle)
                 for x in range(self._max_cycle)
             ]
-            self._dark_gaps = [
-                (self._cycle_length * (x + 1) + self._cycle_cooldown)
-                + (x * self._cycle_length * 2)
+            self._first_dark_times = [
+                (self._cycle_length + self._cycle_cooldown) + (x * full_cycle)
                 for x in range(self._max_cycle)
             ]
         else:
-            self._light_gaps = [
-                (self._cycle_length * (x + 1) + self._cycle_cooldown)
-                + (x * self._cycle_length * 2)
+            # Dark starts first: dark, gap, light, gap, dark, gap, light, gap, ...
+            # Light-to-dark transitions cross cycle boundaries
+            self._last_light_times = [
+                (2 * self._cycle_length + self._cycle_cooldown - 1) + (x * full_cycle)
                 for x in range(self._max_cycle)
             ]
-            self._dark_gaps = [
-                (self._cycle_length * (x + 1)) + (x * self._cycle_length * 2)
+            self._first_dark_times = [
+                full_cycle + (x * full_cycle)
                 for x in range(self._max_cycle)
             ]
 
-        # Select and sum values
+        # Select only the rows at our target time points
         movs = cycles[
-            (cycles[self._time].isin(self._light_gaps))
-            | (cycles[self._time].isin(self._dark_gaps))
+            (cycles[self._time].isin(self._last_light_times))
+            | (cycles[self._time].isin(self._first_dark_times))
         ]
 
-        # Initiate list to store all calculate values
+        # Initiate list to store all calculated values
         store_movs = []
 
-        # Iterate through all cycles, subtracting dark from light
+        # Iterate through all cycles, computing dark - light at transition
         for x in range(self._max_cycle):
 
-            # Merge light and dark information
-            to_calc_mov = pd.merge(
-                movs[movs[self._time] == self._light_gaps[x]]
-                .rename(columns={"value": "light"})
-                .drop([self._time, "cycle"], axis=1),
-                movs[movs[self._time] == self._dark_gaps[x]]
-                .rename(columns={"value": "dark"})
-                .drop([self._time, "cycle"], axis=1),
-            )
+            light_rows = movs[movs[self._time] == self._last_light_times[x]].rename(
+                columns={"value": "light"}
+            ).drop([self._time, "cycle"], axis=1)
 
-            # Calculate aucs and store
-            to_calc_mov["Cycle"] = "MOV" + str(x+1)
+            dark_rows = movs[movs[self._time] == self._first_dark_times[x]].rename(
+                columns={"value": "dark"}
+            ).drop([self._time, "cycle"], axis=1)
+
+            # Inner merge: only fish with both measurements
+            to_calc_mov = pd.merge(light_rows, dark_rows)
+
+            # MOV = dark_value - light_value (positive = increased activity at transition = normal)
+            to_calc_mov["Cycle"] = "MOV" + str(x + 1)
             to_calc_mov["MOV"] = to_calc_mov["dark"] - to_calc_mov["light"]
             store_movs.append(to_calc_mov)
 
-        # Concatenate
+        # Concatenate all cycles
         mov_values = pd.concat(store_movs).drop_duplicates().dropna()
 
-        # Pivot wider
-        mov_process = mov_values[[self._chemical, self._plate, self._concentration, self._well, "Cycle", "MOV"]].pivot(index=[self._chemical, self._plate, self._concentration, self._well], columns="Cycle", values="MOV").reset_index()
+        # Pivot so each cycle is its own column (MOV1, MOV2, etc.)
+        mov_process = (
+            mov_values[
+                [self._chemical, self._plate, self._concentration, self._well, "Cycle", "MOV"]
+            ]
+            .pivot(
+                index=[self._chemical, self._plate, self._concentration, self._well],
+                columns="Cycle",
+                values="MOV",
+            )
+            .reset_index()
+        )
 
-        # Convert to dichotomous
+        # Convert each MOV column from continuous to dichotomous (0/1)
         for x in range(self._max_cycle):
             value = "MOV" + str(x + 1)
             mov_process[value] = self.to_dichotomous(mov_process, value)
 
-        # Return AUC
         return mov_process
 
     # LPR-specific: Convert LPR continuous to Dichotomous
     def convert_LPR(self):
         """Wrapper function for all LPR-specific functions for calculating cycles,
         AUC values, MOV values, and converting them to dichotomous values"""
+
         id_vars = [self._chemical, self._concentration, self._plate, self._well]
 
         # Step 1: Make Cycle Information

@@ -15,38 +15,18 @@ def benchmark_dose(self, path: str):
         The path to write the benchmark dose file to
     
     '''
-        
-    # Pull BMDS. 
-    ## Flag meanings:
-    ## 0 - failed minimum concentration filter
-    ## 1 - failed other filter
-    ## 2 - Passes all filters, p-value on GOF
-    ## 4 - Passes all filters, p-value on GOF below or equal to 0.32
 
     BMDS = self.bmds
 
     # If modeled, the data passed all filters.
-    BMDS["DataQC_Flag"] = 2
-
-    # Pull from the goodness of fit tests
-    for row in range(len(BMDS)):
-
-        # Extract endpoint, model, and p_values
-        the_endpoint = BMDS["bmdrc.Endpoint.ID"][row]
-        the_model = BMDS["Model"][row]
-        p_val_df = self.p_value_df
-        p_val = p_val_df.loc[p_val_df["bmdrc.Endpoint.ID"] == the_endpoint, the_model].tolist()[0]
-
-        # If the p-value is too low, then make the flag a 4
-        if p_val <= 0.32:
-            BMDS.loc[BMDS["bmdrc.Endpoint.ID"] == the_endpoint, "DataQC_Flag"] = 4
+    BMDS["DataQC_Flag"] = "Pass"
 
     # Add filtered data as needed
     if self.bmds_filtered is not None:
 
         # Pull filtered information
         BMDS_Filtered = self.bmds_filtered
-        BMDS_Filtered["DataQC_Flag"] = 1
+        BMDS_Filtered["DataQC_Flag"] = "Fail - other filter"
 
         # Add where minimum concentration filter was the issue
         for row in range(len(BMDS_Filtered)):
@@ -55,7 +35,7 @@ def benchmark_dose(self, path: str):
             the_reasons = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == the_endpoint]["bmdrc.filter.reason"].unique().tolist()
 
             if " correlation_score_filter" in the_reasons:
-                BMDS_Filtered["DataQC_Flag"][row] = 0
+                BMDS_Filtered["DataQC_Flag"][row] = "Fail - correlation score filter"
 
         # Remove endpoints whose models were already fit
         the_ids = BMDS["bmdrc.Endpoint.ID"].unique().tolist()
@@ -88,7 +68,7 @@ def benchmark_dose(self, path: str):
 
         # Order the outputs correctly and add QC flag
         pvalue_bmds = pvalue_bmds[["bmdrc.Endpoint.ID", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm"]]
-        pvalue_bmds["DataQC_Flag"] = 0
+        pvalue_bmds["DataQC_Flag"] = "Fail - GOF check"
 
         # Concatenate
         BMDS_Final = pd.concat([BMDS_Final, pvalue_bmds])
