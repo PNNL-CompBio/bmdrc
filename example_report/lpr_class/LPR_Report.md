@@ -1,4 +1,4 @@
-# Benchmark Dose Curves
+# LPR_Report
 
 ## Input Data
 
@@ -28,8 +28,6 @@ New endpoints were made using existing endpoints using 'or', which means that if
 
 #### **Set Invalid Wells to NA**
 
-In some cases, like when a sample fish dies, many affected endpoints need to be set to NA. Here, the 'Endpoint Name' column denotes the specific endpoint that sets this rule. In this example, it could be MORT for mortality. Then, the endpoint value needs to be set, which in this case would be a 1 to indicate sample fish that did die. All endpoints would then be set to NA except for cases where the endpoint should not be affected, which are referred to as 'Endpoint Exceptions.'
-
 This step was not conducted.
 
 #### **Remove Invalid Endpoints**
@@ -40,18 +38,16 @@ This step was not conducted.
 
 #### **Negative Control Filter**
 
-Plates with unusually high responses in negative control samples were filtered. The response threshold was set to **50.0**. See a summary below:
+Plates with unusually high responses in negative control samples were filtered. The response threshold was set to **50**. See a summary below:
 
 |Response|Number of Plates|Filter|
 |---|---|---|
-|0.0|6|Keep|
-|8.3333|8|Keep|
-|16.6667|5|Keep|
-|25.0|4|Keep|
+|0.0|18|Keep|
+|8.3333|3|Keep|
+|11.1111|4|Keep|
+|16.6667|2|Keep|
+|22.2222|1|Keep|
 |33.3333|2|Keep|
-|41.6667|1|Keep|
-|50.0|2|Filter|
-|75.0|2|Filter|
 
 And here is the plot:
 ![Filter Negative Control](./filter_negative_control.png)
@@ -62,7 +58,7 @@ Endpoints with too few concentration measurements (non-NA) to model are removed.
 
 |Number of Concentrations|Number of Endpoints|Filter|
 |---|---|---|
-|8|10|Keep|
+|7|10|Keep|
 
 And here is the plot:
 ![Filter Minimum Concentration](./filter_minimum_concentration.png)
@@ -75,14 +71,14 @@ Endpoints with little to no positive correlation with dose are unexpected and sh
 |---|---|
 |-1.0|0.0|
 |-0.8|0.0|
-|-0.6|2.0|
-|-0.4|1.0|
-|-0.2|2.0|
-|0.0|3.0|
-|0.2|2.0|
+|-0.6|0.0|
+|-0.4|0.0|
+|-0.2|0.0|
+|0.0|0.0|
+|0.2|0.0|
 |0.4|0.0|
-|0.6|0.0|
-|0.8|0.0|
+|0.6|5.0|
+|0.8|5.0|
 
 And here is the plot:
 ![Filter Correlation Score](./filter_correlation_score.png)
@@ -91,7 +87,7 @@ And here is the plot:
 
 #### **Filter Summary**
 
-Overall, 10 endpoint and chemical combinations were considered. 2 were deemed eligible for modeling, and 8 were not based on filtering selections explained in the previous section.
+Overall, 10 endpoint and chemical combinations were considered. 10 were deemed eligible for modeling, and 0 were not based on filtering selections explained in the previous section. Of the 10 deemed eligible for modeling, 0 did not pass modeling checks.
 
 #### **Model Fitting Selections**
 
@@ -100,17 +96,16 @@ The following model fitting parameters were selected.
 |Parameter|Value|Parameter Description|
 |---|---|---|
 |Goodness of Fit Threshold|0.1|Minimum p-value for fitting a model. Default is 0.1|
-|Akaike Information Criterion (AIC) Threshold|2.0|Any models with an AIC within this value are considered an equitable fit. Default is 2.
+|Akaike Information Criterion (AIC) Threshold|2|Any models with an AIC within this value are considered an equitable fit. Default is 2.
 |Model Selection|lowest BMDL|Either return one model with the lowest BMDL, or combine equivalent fits|
 
 #### **Model Quality Summary**
 
-Below is a summary table of the number of endpoints with a high quality fit (a flag of 1, meaning that the BMD10 value is within the range of measured doses) and those that are not high quality (a flag of 0).
+Below is a summary table of the number of endpoints with a high quality fit and those with poor fit, as defined by each label below.
 
-|Flag|Count|
-|---|---|
-|0|0|
-|1|2|
+| DataQC_Flag   |   count |
+|:--------------|--------:|
+| Pass          |      10 |
 
 #### **Output Modules**
 

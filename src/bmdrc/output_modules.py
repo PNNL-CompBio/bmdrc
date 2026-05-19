@@ -74,13 +74,15 @@ def benchmark_dose(self, path: str):
         BMDS_Final = pd.concat([BMDS_Final, pvalue_bmds])
 
     # Add BMD10 and BMD50 flags
-    BMDS_Final["BMD10_Flag"] = 0
-    BMDS_Final["BMD50_Flag"] = 0
-    BMDS_Final.loc[(BMDS_Final["BMD10"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD10"] <= BMDS_Final["Max_Dose"]), "BMD10_Flag"] = 1
-    BMDS_Final.loc[(BMDS_Final["BMD50"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD50"] <= BMDS_Final["Max_Dose"]), "BMD50_Flag"] = 1
+    BMDS_Final["BMD10_Flag"] = "Fail"
+    BMDS_Final["BMD50_Flag"] = "Fail"
+    BMDS_Final.loc[(BMDS_Final["BMD10"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD10"] <= BMDS_Final["Max_Dose"]), "BMD10_Flag"] = "Pass"
+    BMDS_Final.loc[(BMDS_Final["BMD50"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD50"] <= BMDS_Final["Max_Dose"]), "BMD50_Flag"] = "Pass"
 
     # Add BMD Analysis Flag
-    BMDS_Final["BMD_Analysis_Flag"] = BMDS_Final["BMD10_Flag"] + BMDS_Final["BMD50_Flag"]
+    BMDS_Final["BMD_Analysis_Flag"] = BMDS_Final.apply(
+        lambda x: "Pass" if x["BMD10_Flag"] == "Pass" and x["BMD50_Flag"] == "Pass" else "Fail", axis=1
+    )
     
     # Add columns for printing
     BMDS_Final["Chemical_ID"] = [x.split(" ")[0] for x in BMDS_Final["bmdrc.Endpoint.ID"].to_list()]

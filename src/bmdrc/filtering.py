@@ -74,6 +74,7 @@ def __negative_control_plot(neg_control_df):
     plt.xlabel("Proportional response in negative controls")
     plt.ylabel("Count")
     plt.legend(handles, labels)
+    plt.xticks(rotation = 90)
 
     return(fig)
 
