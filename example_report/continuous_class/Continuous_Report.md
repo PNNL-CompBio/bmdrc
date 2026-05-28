@@ -34,6 +34,8 @@ Controls with unusually high responses in negative control samples were filtered
 |---:|:---------|--------:|
 |  0 | Keep     |      26 |
 |  1 | Remove   |       7 |
+
+
 And here is the plot:
 ![Filter Negative Control](./filter_negative_control.png)
 
