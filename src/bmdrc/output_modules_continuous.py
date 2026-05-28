@@ -1,3 +1,4 @@
+from .filtering import make_plate_groups
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -7,7 +8,13 @@ import json
 
 def benchmark_dose(self, path: str):
     '''
-    Calculate high level of statistics of benchmark dose fits
+    Calculate high level of statistics of benchmark dose fits. The Data_QC flag has is determined as follows:
+
+    | Flag | Number of Non-Control Concentrations | Spearman Correlation | Goodness of Fit | BMD50 |
+    | -- | -- | -- | -- | -- |
+    | Not Fit | < 3 | < 0.2 | < 0.1 | Not within concentration range |
+    | Moderate | >= 3 | 0.2 - 0.7 | >= 0.1 | Not within concentration range |
+    | Good | >= 5 | > 0.7 | >= 0.1 | Within concentration range |
 
     Parameters
     ----------
@@ -15,19 +22,26 @@ def benchmark_dose(self, path: str):
         The path to write the benchmark dose file to
     
     '''
+
+    # Add plate groups (needed for DataQC_Flag)
+    try:
+        self.plate_groups
+    except AttributeError:
+        make_plate_groups(self)
+
         
     # Pull BMDS. 
     BMDS = self.bmds
 
     # If modeled, the data passed all filters.
-    BMDS["DataQC_Flag"] = "Pass"
+    BMDS["Modeled_Flag"] = "Pass"
 
     # Add filtered data as needed
     if self.bmds_filtered is not None:
 
         # Pull filtered information
         BMDS_Filtered = self.bmds_filtered
-        BMDS_Filtered["DataQC_Flag"] = "Fail - other filter"
+        BMDS_Filtered["Modeled_Flag"] = "Fail - other filter"
 
         # Add where minimum concentration filter was the issue
         for row in range(len(BMDS_Filtered)):
@@ -36,7 +50,7 @@ def benchmark_dose(self, path: str):
             the_reasons = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == the_endpoint]["bmdrc.filter.reason"].unique().tolist()
 
             if " correlation_score_filter" in the_reasons:
-                BMDS_Filtered["DataQC_Flag"][row] = "Fail - correlation score filter"
+                BMDS_Filtered["Modeled_Flag"][row] = "Fail - correlation score filter"
 
         # Remove endpoints whose models were already fit
         the_ids = BMDS["bmdrc.Endpoint.ID"].unique().tolist()
@@ -54,17 +68,67 @@ def benchmark_dose(self, path: str):
     BMDS_Final.loc[(BMDS_Final["BMD10"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD10"] <= BMDS_Final["Max_Dose"]), "BMD10_Flag"] = "Pass"
     BMDS_Final.loc[(BMDS_Final["BMD50"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD50"] <= BMDS_Final["Max_Dose"]), "BMD50_Flag"] = "Pass"
 
-    # Add BMD Analysis Flag
-    BMDS_Final["BMD_Analysis_Flag"] = BMDS_Final.apply(
-        lambda x: "Pass" if x["BMD10_Flag"] == "Pass" and x["BMD50_Flag"] == "Pass" else "Fail", axis=1
-    )
+        ##################
+    ## DATA QC FLAG ##
+    ###################
+
+    ## Add Number of Concentrations ## 
+    PlateGroupsNonZero = self.plate_groups[self.plate_groups[self.concentration] != 0]
+
+    # Get a count per concentration group
+    ConcCount = PlateGroupsNonZero.loc[PlateGroupsNonZero["bmdrc.filter"] == "Keep", ["bmdrc.Endpoint.ID", self.concentration]].groupby("bmdrc.Endpoint.ID").nunique().reset_index().rename(columns = {self.concentration:"NumConc"})
+
+    # Add to the benchmark dose table
+    BMDS_Final = BMDS_Final.merge(ConcCount, left_on = "bmdrc.Endpoint.ID", right_on = "bmdrc.Endpoint.ID", how = "left")
+
+    ## Add Spearman Correlation ## 
+
+    CorScore = self.plate_groups
+
+    # If the data is BinaryClass where plate and well information is available, do the following
+    if hasattr(self, "value"):
+
+        # First, only keep the values that aren't being filtered
+        CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", "bmdrc.num.nonna", "bmdrc.num.affected"]]
+
+        # Sum up counts
+        CorScore = CorScore.groupby([self.concentration, "bmdrc.Endpoint.ID"]).sum().reset_index()
+
+        # Calculate response
+        CorScore["Response"] = CorScore["bmdrc.num.affected"] / CorScore["bmdrc.num.nonna"]
+
+    else:
+
+        # Calculate the response
+        CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", self.response]].rename(columns = {self.response:"Response"})
+
+    # Sort data.frame appropriately
+    CorScore.sort_values(by = ["bmdrc.Endpoint.ID", self.concentration])
+
+    # Calculate spearman correlations
+    CorScore = CorScore[[self.concentration, "bmdrc.Endpoint.ID", "Response"]].groupby(["bmdrc.Endpoint.ID"]).corr(method = "spearman").unstack().iloc[:,1].reset_index()
+    CorScore.columns = ["bmdrc.Endpoint.ID", "Spearman_Correlation"]
+
+    # Add to the benchmark dose table
+    BMDS_Final = BMDS_Final.merge(CorScore, left_on = "bmdrc.Endpoint.ID", right_on = "bmdrc.Endpoint.ID", how = "left")
+
+    # Add Final Data QC Flag
+    BMDS_Final["DataQC_Flag"] = "Not Fit"
+    BMDS_Final.loc[(BMDS_Final["NumConc"] >= 3) &
+                   (BMDS_Final["Spearman_Correlation"] >= 0.2), "DataQC_Flag"] = "Moderate"
+    BMDS_Final.loc[(BMDS_Final["NumConc"] >= 5) & 
+                   (BMDS_Final["Spearman_Correlation"] >= 0.7) &
+                   (BMDS_Final["BMD50_Flag"] == "Pass"), "DataQC_Flag"] = "Good"
     
+    # Fix cases where a models is not fit
+    BMDS_Final.loc[BMDS_Final["Modeled_Flag"] != "Pass", "DataQC_Flag"] = "Not Fit"
+
     # Add columns for printing
     BMDS_Final["Chemical_ID"] = [x.split(" ")[0] for x in BMDS_Final["bmdrc.Endpoint.ID"].to_list()]
     BMDS_Final["End_Point"] = [x.split(" ")[1] for x in BMDS_Final["bmdrc.Endpoint.ID"].to_list()]
 
     BMDS_Final = BMDS_Final[["Chemical_ID", "End_Point", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm", 
-                             "DataQC_Flag", "BMD_Analysis_Flag", "BMD10_Flag", "BMD50_Flag", "bmdrc.Endpoint.ID"]]
+                             "Modeled_Flag", "DataQC_Flag", "BMD10_Flag", "BMD50_Flag", "NumConc", "Spearman_Correlation", "bmdrc.Endpoint.ID"]]
     
     # Save output table
     self.output_res_benchmark_dose = BMDS_Final

@@ -1,3 +1,4 @@
+from .filtering import make_plate_groups
 import numpy as np
 import pandas as pd
 from astropy import stats as astrostats
@@ -7,7 +8,13 @@ import json
 
 def benchmark_dose(self, path: str):
     '''
-    Calculate high level of statistics of benchmark dose fits
+    Calculate high level of statistics of benchmark dose fits. The Data_QC flag has is determined as follows:
+
+    | Flag | Number of Non-Control Concentrations | Spearman Correlation | Goodness of Fit | BMD50 |
+    | -- | -- | -- | -- | -- |
+    | Not Fit | < 3 | < 0.2 | < 0.1 | Not within concentration range |
+    | Moderate | >= 3 | 0.2 - 0.7 | >= 0.1 | Not within concentration range |
+    | Good | >= 5 | > 0.7 | >= 0.1 | Within concentration range |
 
     Parameters
     ----------
@@ -15,38 +22,24 @@ def benchmark_dose(self, path: str):
         The path to write the benchmark dose file to
     
     '''
-        
-    # Pull BMDS. 
-    ## Flag meanings:
-    ## 0 - failed minimum concentration filter
-    ## 1 - failed other filter
-    ## 2 - Passes all filters, p-value on GOF
-    ## 4 - Passes all filters, p-value on GOF below or equal to 0.32
 
     BMDS = self.bmds
 
+    # Add plate groups (needed for DataQC_Flag)
+    try:
+        self.plate_groups
+    except AttributeError:
+        make_plate_groups(self)
+
     # If modeled, the data passed all filters.
-    BMDS["DataQC_Flag"] = 2
-
-    # Pull from the goodness of fit tests
-    for row in range(len(BMDS)):
-
-        # Extract endpoint, model, and p_values
-        the_endpoint = BMDS["bmdrc.Endpoint.ID"][row]
-        the_model = BMDS["Model"][row]
-        p_val_df = self.p_value_df
-        p_val = p_val_df.loc[p_val_df["bmdrc.Endpoint.ID"] == the_endpoint, the_model].tolist()[0]
-
-        # If the p-value is too low, then make the flag a 4
-        if p_val <= 0.32:
-            BMDS.loc[BMDS["bmdrc.Endpoint.ID"] == the_endpoint, "DataQC_Flag"] = 4
+    BMDS["Modeled_Flag"] = "Pass"
 
     # Add filtered data as needed
     if self.bmds_filtered is not None:
 
         # Pull filtered information
         BMDS_Filtered = self.bmds_filtered
-        BMDS_Filtered["DataQC_Flag"] = 1
+        BMDS_Filtered["Modeled_Flag"] = "Fail - other filter"
 
         # Add where minimum concentration filter was the issue
         for row in range(len(BMDS_Filtered)):
@@ -55,7 +48,7 @@ def benchmark_dose(self, path: str):
             the_reasons = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == the_endpoint]["bmdrc.filter.reason"].unique().tolist()
 
             if " correlation_score_filter" in the_reasons:
-                BMDS_Filtered["DataQC_Flag"][row] = 0
+                BMDS_Filtered["Modeled_Flag"][row] = "Fail - correlation score filter"
 
         # Remove endpoints whose models were already fit
         the_ids = BMDS["bmdrc.Endpoint.ID"].unique().tolist()
@@ -88,29 +81,81 @@ def benchmark_dose(self, path: str):
 
         # Order the outputs correctly and add QC flag
         pvalue_bmds = pvalue_bmds[["bmdrc.Endpoint.ID", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm"]]
-        pvalue_bmds["DataQC_Flag"] = 0
+        pvalue_bmds["Modeled_Flag"] = "Fail - GOF check"
 
         # Concatenate
         BMDS_Final = pd.concat([BMDS_Final, pvalue_bmds])
 
     # Add BMD10 and BMD50 flags
-    BMDS_Final["BMD10_Flag"] = 0
-    BMDS_Final["BMD50_Flag"] = 0
-    BMDS_Final.loc[(BMDS_Final["BMD10"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD10"] <= BMDS_Final["Max_Dose"]), "BMD10_Flag"] = 1
-    BMDS_Final.loc[(BMDS_Final["BMD50"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD50"] <= BMDS_Final["Max_Dose"]), "BMD50_Flag"] = 1
+    BMDS_Final["BMD10_Flag"] = "Fail"
+    BMDS_Final["BMD50_Flag"] = "Fail"
+    BMDS_Final.loc[(BMDS_Final["BMD10"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD10"] <= BMDS_Final["Max_Dose"]), "BMD10_Flag"] = "Pass"
+    BMDS_Final.loc[(BMDS_Final["BMD50"] >= BMDS_Final["Min_Dose"]) & (BMDS_Final["BMD50"] <= BMDS_Final["Max_Dose"]), "BMD50_Flag"] = "Pass"
 
-    # Add BMD Analysis Flag
-    BMDS_Final["BMD_Analysis_Flag"] = BMDS_Final["BMD10_Flag"] + BMDS_Final["BMD50_Flag"]
+    ##################
+    ## DATA QC FLAG ##
+    ###################
+
+    ## Add Number of Concentrations ## 
+    PlateGroupsNonZero = self.plate_groups[self.plate_groups[self.concentration] != 0]
+
+    # Get a count per concentration group
+    ConcCount = PlateGroupsNonZero.loc[PlateGroupsNonZero["bmdrc.filter"] == "Keep", ["bmdrc.Endpoint.ID", self.concentration]].groupby("bmdrc.Endpoint.ID").nunique().reset_index().rename(columns = {self.concentration:"NumConc"})
+
+    # Add to the benchmark dose table
+    BMDS_Final = BMDS_Final.merge(ConcCount, left_on = "bmdrc.Endpoint.ID", right_on = "bmdrc.Endpoint.ID", how = "left")
+
+    ## Add Spearman Correlation ## 
+
+    CorScore = self.plate_groups
+
+    # If the data is BinaryClass where plate and well information is available, do the following
+    if hasattr(self, "value"):
+
+        # First, only keep the values that aren't being filtered
+        CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", "bmdrc.num.nonna", "bmdrc.num.affected"]]
+
+        # Sum up counts
+        CorScore = CorScore.groupby([self.concentration, "bmdrc.Endpoint.ID"]).sum().reset_index()
+
+        # Calculate response
+        CorScore["Response"] = CorScore["bmdrc.num.affected"] / CorScore["bmdrc.num.nonna"]
+
+    else:
+
+        # Calculate the response
+        CorScore = CorScore.loc[CorScore["bmdrc.filter"] == "Keep", [self.concentration, "bmdrc.Endpoint.ID", self.response]].rename(columns = {self.response:"Response"})
+
+    # Sort data.frame appropriately
+    CorScore.sort_values(by = ["bmdrc.Endpoint.ID", self.concentration])
+
+    # Calculate spearman correlations
+    CorScore = CorScore[[self.concentration, "bmdrc.Endpoint.ID", "Response"]].groupby(["bmdrc.Endpoint.ID"]).corr(method = "spearman").unstack().iloc[:,1].reset_index()
+    CorScore.columns = ["bmdrc.Endpoint.ID", "Spearman_Correlation"]
+
+    # Add to the benchmark dose table
+    BMDS_Final = BMDS_Final.merge(CorScore, left_on = "bmdrc.Endpoint.ID", right_on = "bmdrc.Endpoint.ID", how = "left")
+
+    # Add Final Data QC Flag
+    BMDS_Final["DataQC_Flag"] = "Not Fit"
+    BMDS_Final.loc[(BMDS_Final["NumConc"] >= 3) &
+                   (BMDS_Final["Spearman_Correlation"] >= 0.2), "DataQC_Flag"] = "Moderate"
+    BMDS_Final.loc[(BMDS_Final["NumConc"] >= 5) & 
+                   (BMDS_Final["Spearman_Correlation"] >= 0.7) &
+                   (BMDS_Final["BMD50_Flag"] == "Pass"), "DataQC_Flag"] = "Good"
     
+    # Fix cases where a models is not fit
+    BMDS_Final.loc[BMDS_Final["Modeled_Flag"] != "Pass", "DataQC_Flag"] = "Not Fit"
+
     # Add columns for printing
     BMDS_Final["Chemical_ID"] = [x.split(" ")[0] for x in BMDS_Final["bmdrc.Endpoint.ID"].to_list()]
     BMDS_Final["End_Point"] = [x.split(" ")[1] for x in BMDS_Final["bmdrc.Endpoint.ID"].to_list()]
 
     BMDS_Final = BMDS_Final[["Chemical_ID", "End_Point", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm", 
-                "DataQC_Flag", "BMD_Analysis_Flag", "BMD10_Flag", "BMD50_Flag", "bmdrc.Endpoint.ID"]]
+                "Modeled_Flag", "DataQC_Flag", "BMD10_Flag", "BMD50_Flag", "NumConc", "Spearman_Correlation", "bmdrc.Endpoint.ID"]]
     
     # Arrange by analysis flag
-    BMDS_Final = BMDS_Final.sort_values("BMD_Analysis_Flag", ascending = False)
+    BMDS_Final = BMDS_Final.sort_values("DataQC_Flag", ascending = True)
     
     # Save output table
     self.output_res_benchmark_dose = BMDS_Final
@@ -190,7 +235,7 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
 
     if file_type == ".md":
 
-        if str(type(self)) != "<class 'bmdrc.LPRClass.LPRClass'>":
+        if str(type(self)) == "<class 'bmdrc.BinaryClass.BinaryClass'>":
 
             out_string = "# " + str(report_name) + "\n\n" + \
             "## Input Data\n\n" + \
@@ -206,7 +251,7 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             "|Value|"  + str(self.value) + "|\n\n" + \
             "## Pre-Processing\n\n#### **Combine & Make New Endpoints**\n"
 
-        else: 
+        elif str(type(self)) == "<class 'bmdrc.LPRClass.LPRClass'>": 
 
             out_string = "# " + str(report_name) + "\n\n" + \
             "## Input Data\n\n" + \
@@ -225,14 +270,41 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             "|Starting Cycle|" + str(self.starting_cycle) + "|\n\n" + \
             "## Pre-Processing\n\n#### **Combine & Make New Endpoints**\n"
 
+        elif str(type(self)) == "<class 'bmdrc.ProportionalClass.ProportionalClass'>":
+
+            out_string = "# " + str(report_name) + "\n\n" + \
+            "## Input Data\n\n" + \
+            "A **proportional class** object was created." + \
+            " The following column names were set:\n\n" + \
+            "|Parameter|Column Name|\n" + \
+            "|---------|-----------|\n" + \
+            "|Chemical|" + str(self.chemical) + "|\n" + \
+            "|Endpoint|"  + str(self.endpoint) + "|\n" + \
+            "|Concentration|"  + str(self.concentration) + "|\n" + \
+            "|Response|"  + str(self.response) + "|\n\n" + \
+            "## Pre-Processing\n\n#### **Combine & Make New Endpoints**\n"
+
+        elif str(type(self)) == "<class 'bmdrc.ContinuousClass.ContinuousClass'>":
+
+            out_string = "# " + str(report_name) + "\n\n" + \
+            "## Input Data\n\n" + \
+            "A **continuous class** object was created." + \
+            " The following column names were set:\n\n" + \
+            "|Parameter|Column Name|\n" + \
+            "|---------|-----------|\n" + \
+            "|Chemical|" + str(self.chemical) + "|\n" + \
+            "|Endpoint|"  + str(self.endpoint) + "|\n" + \
+            "|Concentration|"  + str(self.concentration) + "|\n" + \
+            "|Response|"  + str(self.response) + "|\n\n" + \
+            "## Pre-Processing\n\n#### **Combine & Make New Endpoints**\n"
+
         ############################
         ## PRE-PROCESSING RESULTS ##
         ############################
 
         ## Combine & Make New Endpoints----------------------------------------------------------------------------- 
 
-        try:
-
+        if hasattr(self, "report_combination"):
             out_string = out_string + "New endpoints were made using existing endpoints using 'or', which means that" + \
             " if there is any endpoints with a '1', this new endpoint will also have a '1', regardless of" + \
             " how many zeroes there are in the other endpoints. See a summary table of added endpoints below:\n\n"
@@ -245,14 +317,12 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
                 the_combined = the_combined + "|" + key + value_collapse[0:(len(value_collapse)-2)] + "|\n"
             the_combined = the_combined + "\n"
             out_string = out_string + the_combined + "#### **Set Invalid Wells to NA**\n\n"
-
-        except:
+        else:
             out_string = out_string + "This step was not conducted.\n\n#### **Set Invalid Wells to NA**\n\n"
 
         # Set Invalid Wells to NA-----------------------------------------------------------------------------------
             
-        try:
-
+        if hasattr(self, "report_well_na"):
             out_string = out_string + "In some cases, like when a sample fish dies, many affected endpoints" + \
                         " need to be set to NA. Here, the 'Endpoint Name' column denotes the specific" + \
                         " endpoint that sets this rule. In this example, it could be MORT for mortality." + \
@@ -286,23 +356,19 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             endpoints = endpoints + "\n#### **Remove Invalid Endpoints**\n\n"
 
             out_string = out_string + endpoints
-
-        except:
+        else:
             out_string = out_string + "This step was not conducted.\n\n#### **Remove Invalid Endpoints**\n\n"
 
         # Remove Invalid Endpoints---------------------------------------------------------------------------------
             
-        try:
-
+        if hasattr(self, "report_endpoint_removal"):
             the_removed = ""
             for removed in self.report_endpoint_removal:
                 the_removed = the_removed + removed + ", "
             the_removed = the_removed[0:(len(the_removed)-2)]
 
             out_string = out_string + "The following endpoints were removed: " + the_removed + "\n\n"
-
-        except:
-
+        else:
             out_string = out_string + "This step was not conducted.\n\n"
 
         out_string = out_string + "## Filtering\n\n#### **Negative Control Filter**\n\n"
@@ -313,32 +379,42 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
 
         # Negative Control Filter------------------------------------------------------------------------------------
 
-        try:
+        if hasattr(self, "filter_negative_control_df"):
 
-            out_string = out_string + "Plates with unusually high responses in negative control samples were filtered." +\
-                        " The response threshold was set to **" + str(self.filter_negative_control_thresh)  + "**. See a summary below:\n\n"
+            if hasattr(self, "filter_negative_control_thresh"):
+
+                out_string = out_string + "Plates with unusually high responses in negative control samples were filtered." +\
+                            " The response threshold was set to **" + str(self.filter_negative_control_thresh)  + "**. See a summary below:\n\n"
             
-            # Make table
-            fnc_table = "|Response|Number of Plates|Filter|\n|---|---|---|\n"
+                # Make table
+                fnc_table = "|Response|Number of Plates|Filter|\n|---|---|---|\n"
 
-            for el in range(len(self.filter_negative_control_df)):
-                row = self.filter_negative_control_df.loc[el]
-                fnc_table = fnc_table + "|" + str(np.round(row["Response"], 4)) + "|" + \
-                            str(row["Count"]) + "|" + row["Filter"] + "|\n"
+                for el in range(len(self.filter_negative_control_df)):
+                    row = self.filter_negative_control_df.loc[el]
+                    fnc_table = fnc_table + "|" + str(np.round(row["Response"], 4)) + "|" + \
+                                str(row["Count"]) + "|" + row["Filter"] + "|\n"
+                    
+                # Save plot
+                self.filter_negative_control_plot.savefig(out_folder + "/" + "filter_negative_control.png")
+                out_string = out_string + fnc_table + "\nAnd here is the plot:\n![Filter Negative Control](./filter_negative_control.png)\n"
+                out_string = out_string +  "\n#### **Minimum Concentration Filter**\n\n"
 
-            # Save plot
-            self.filter_negative_control_plot.savefig(out_folder + "/" + "filter_negative_control.png")
+            else:
 
-            out_string = out_string + fnc_table + "\nAnd here is the plot:\n![Filter Negative Control](./filter_negative_control.png)\n"
-            out_string = out_string +  "\n#### **Minimum Concentration Filter**\n\n"
+                out_string = out_string + "Controls with unusually high responses in negative control samples were filtered. See a summary below:\n\n" + \
+                             self.filter_negative_control_df.to_markdown()
+                
+                # Save plot
+                self.filter_negative_control_plot.savefig(out_folder + "/" + "filter_negative_control.png")
+                out_string = out_string + "\nAnd here is the plot:\n![Filter Negative Control](./filter_negative_control.png)\n"
+                out_string = out_string +  "\n#### **Minimum Concentration Filter**\n\n"
 
-        except:
+        else:
             out_string = out_string + "This step was not conducted.\n\n#### **Minimum Concentration Filter**\n\n"
 
         # Minimum Concentration Filter--------------------------------------------------------------------------------
             
-        try:
-
+        if hasattr(self, "filter_min_concentration_df"):
             out_string = out_string + "Endpoints with too few concentration measurements (non-NA) to model are removed." +\
                         " The minimum was set to **" + str(self.filter_min_concentration_thresh)  + "**. See a summary below:\n\n"
             
@@ -355,15 +431,12 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
 
             out_string = out_string + mc_table + "\nAnd here is the plot:\n![Filter Minimum Concentration](./filter_minimum_concentration.png)\n"
             out_string = out_string +  "\n#### **Correlation Score Filter**\n\n"
-
-        except:
-
+        else:
             out_string = out_string + "This step was not conducted.\n\n#### **Correlation Score Filter**\n\n"
 
         # Correlation Score Filter----------------------------------------------------------------------------------
             
-        try:
-
+        if hasattr(self, "filter_correlation_score_df"):
             out_string = out_string + "Endpoints with little to no positive correlation with dose are unexpected" +\
                         " and should be removed. The correlation threshold was set to **" + str(self.filter_correlation_score_thresh)  + "**. See a summary below:\n\n"
             
@@ -385,17 +458,14 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             self.filter_correlation_score_plot.savefig(out_folder + "/" + "filter_correlation_score.png")
 
             out_string = out_string + cs_table + "\nAnd here is the plot:\n![Filter Correlation Score](./filter_correlation_score.png)\n\n## Model Fitting & Output Modules\n\n#### **Filter Summary**\n\n"
-
-        except:
-
+        else:
             out_string = out_string + "This step was not conducted.\n\n## Model Fitting & Output Modules\n\n#### **Filter Summary**\n\n"
             
         ###################
         ## MODEL FITTING ##
         ###################
             
-        try:
-        
+        if hasattr(self, "bmds") and hasattr(self, "plate_groups"):
             # Filter Summary-------------------------------------------------------------------------------------
                 
             # Get removal and kept counts --> remove filtered options
@@ -405,7 +475,7 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             total = removed + kept
 
             # Also count those failing to meet GOF
-            failed_p_val = len(self.failed_pvalue_test)
+            failed_p_val = len(self.failed_pvalue_test) if hasattr(self, "failed_pvalue_test") else 0
 
             out_string = out_string + "Overall, " + str(total) + " endpoint and chemical combinations were considered. " + str(kept) + \
                         " were deemed eligible for modeling, and " + str(removed) + " were not based on filtering selections explained" + \
@@ -414,28 +484,45 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
             
             # Model Fitting Selections------------------------------------------------------------------------------
 
-            out_string = out_string + "The following model fitting parameters were selected.\n\n|Parameter|Value|Parameter Description|\n" + \
-                        "|---|---|---|\n|Goodness of Fit Threshold|" + str(self.model_fitting_gof_threshold) + "|Minimum p-value for fitting a model. Default is 0.1|\n" + \
-                        "|Akaike Information Criterion (AIC) Threshold|" + str(self.model_fitting_aic_threshold) + "|Any models with an AIC within this value are considered" + \
-                        " an equitable fit. Default is 2.\n" + \
-                        "|Model Selection|" + self.model_fitting_model_selection + "|Either return one model with the lowest BMDL, or combine equivalent fits|\n\n#### **Model Quality Summary**\n\n"
+            if str(type(self)) != "<class 'bmdrc.ContinuousClass.ContinuousClass'>":
+
+                out_string = out_string + "The following model fitting parameters were selected.\n\n|Parameter|Value|Parameter Description|\n" + \
+                    "|---|---|---|\n|Goodness of Fit Threshold|" + str(self.model_fitting_gof_threshold) + "|Minimum p-value for fitting a model. Default is 0.1|\n" + \
+                    "|Akaike Information Criterion (AIC) Threshold|" + str(self.model_fitting_aic_threshold) + "|Any models with an AIC within this value are considered" + \
+                    " an equitable fit. Default is 2.\n" + \
+                    "|Model Selection|" + self.model_fitting_model_selection + "|Either return one model with the lowest BMDL, or combine equivalent fits|\n\n#### **Model Quality Summary**\n\n"
+                
+            else: 
+
+                out_string = out_string + "The following model fitting parameters were selected.\n\n|Parameter|Value|Parameter Description|\n" + \
+                    "|---|---|---|\n|Akaike Information Criterion (AIC) Threshold|" + str(self.model_fitting_aic_threshold) + "|Any models with an AIC within this value are considered" + \
+                    " an equitable fit. Default is 2.\n" + \
+                    "|Model Selection|" + self.model_fitting_model_selection + "|Either return one model with the lowest BMDL, or combine equivalent fits|\n\n#### **Model Quality Summary**\n\n"
             
             # Model Quality Summary---------------------------------------------------------------------------------
 
-            out_string = out_string + "Below is a summary table of the number of endpoints with a high quality fit (a flag of 1, meaning that" + \
-                        " the BMD10 value is within the range of measured doses) and those that are not high quality (a flag of 0).\n\n"
+            out_string = out_string + "Below is a summary table of the number of endpoints with a high quality fit and those with poor fit, as defined by each label below.\n\n"
 
             # Make dataframe of flag counts, adding any missing flags
-            dataqc_table = self.bmds[["Model", "DataQC_Flag"]].groupby("DataQC_Flag").count().reset_index().rename({"Model":"Count"}, axis = 1)
-            if ((0 in dataqc_table["DataQC_Flag"].values.tolist()) == False):
-                dataqc_table = pd.concat([dataqc_table, pd.DataFrame({"DataQC_Flag":[0], "Count":[0]})])
-            if ((1 in dataqc_table["DataQC_Flag"].values.tolist()) == False):
-                dataqc_table = pd.concat([dataqc_table, pd.DataFrame({"DataQC_Flag":[1], "Count":[0]})])
+            try:
+                if self.output_res_benchmark_dose is None:
+                    self.output_benchmark_dose()
+            except:
+                self.output_res_benchmark_dose = pd.DataFrame({"Model":[], "Modeled_Flag":[], "DataQC_Flag":[]})
+            
+            modeled_table = self.output_res_benchmark_dose["Modeled_Flag"].value_counts().reset_index()
+            modeled_table.columns = ["Modeled Flag", "Count"]
+            dataqc_table = self.output_res_benchmark_dose["DataQC_Flag"].value_counts().reset_index()
+            dataqc_table.columns = ["DataQC Flag", "Count"]
 
             # Add flag counts 
-            out_string = out_string + "|Flag|Count|\n|---|---|\n|0|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 0]["Count"].values[0]) + "|\n" + \
-                        "|1|" + str(dataqc_table[dataqc_table["DataQC_Flag"] == 1]["Count"].values[0]) + "|\n\n#### **Output Modules**\n\nBelow, see a table of" + \
-                        " useful methods for extracting outputs from bmdrc.\n\n"
+            out_string = out_string + modeled_table.to_markdown(index=False) + "\n\nAnd here is a summary delineating the good and moderate fits," + \
+                         "based off of the following properties.\n\n" + "| Flag | Number of Non-Control Concentrations | Spearman Correlation | Goodness of Fit | BMD50 | Model Convergence |\n" + \
+                         "| -- | -- | -- | -- | -- | -- |\n| Not Fit | < 3 | < 0.2 | < 0.1 | Not within concentration range | No Models Converged |\n" + \
+                         "| Moderate | >= 3 | 0.2 - 0.7 | >= 0.1 | Not within concentration range | At least 1 model converged |\n" +\
+                         "| Good | >= 5 | > 0.7 | >= 0.1 | Within concentration range | At least 1 model converged |\n\n" + \
+                         dataqc_table.to_markdown(index=False) + "\n\n#### **Output Modules**\n\nBelow, see a table of" + \
+                         " useful methods for extracting outputs from bmdrc.\n\n"
             
             # Add useful parameters 
             out_string = out_string + "|Method|Description|\n|---|---|\n|.bmds|Table of fitted benchmark dose values|\n" + \
@@ -444,9 +531,7 @@ def report_binary(self, out_folder: str, report_name: str, file_type: str):
                         "|.p_value_df|Table of goodness of fit p-values for every eligible endpoint|\n" + \
                         "|.aic_df|Table of Akaike Information Criterion values for every eligible endpoint|\n" + \
                         "|.response_curve|Plot a benchmark dose curve for an endpoint|\n\n"
-            
-        except:
-
+        else:
             out_string = out_string + "Model fits were not conducted."
             
         file = open(out_folder + "/" + report_name + ".md", "w")

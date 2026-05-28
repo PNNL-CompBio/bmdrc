@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 import numpy as np
 
 __author__ = "David Degnan"
@@ -73,6 +74,7 @@ def __negative_control_plot(neg_control_df):
     plt.xlabel("Proportional response in negative controls")
     plt.ylabel("Count")
     plt.legend(handles, labels)
+    plt.xticks(rotation = 90)
 
     return(fig)
 
@@ -160,7 +162,129 @@ def negative_control(self, percentage: float, apply: bool, diagnostic_plot: bool
         self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter"] = "Remove"
         self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter.reason"] =  \
             self.plate_groups.loc[self.plate_groups["bmdrc.Plate.ID"].isin(Plates), "bmdrc.filter.reason"] + " negative_control_filter"
+        
 
+def __negative_control_plot_continuous(neg_counts):
+    '''
+    Support function for the filter modules. 
+    Returns the negative control diagnostic plot for continuous data.
+    '''
+
+    fig = plt.figure(figsize = (10, 5))
+
+    colors = {'Keep':'steelblue', 'Remove':'firebrick'}
+    color_choices = neg_counts["Filter"].apply(lambda x: colors[x])
+    labels = list(colors.keys())
+    handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+
+    plt.bar(x = neg_counts["Filter"], height = neg_counts["Count"], 
+            edgecolor = "black", color = color_choices)
+
+    plt.title("Counts of chemical & endpoint combinations that pass/fail the negative control filter")
+    plt.ylabel("Count")
+    plt.legend(handles, labels)
+    
+    return(fig)
+
+def negative_control_continuous(self, apply: bool, diagnostic_plot: bool):
+    '''
+    Remove continuous data points where the range of the maximum non-control response minus the minimum
+    non-control response is less than the 95% confidence interval of the negative response.
+
+    Parameters 
+    -----------
+    apply
+        A boolean to determine whether the filter should be applied. Default is False.
+    diagnostic_plot
+        A boolean to determine whether to return a diagnostic plot if apply is False. Default is False.
+    '''
+
+    ##############################
+    ## MAKE GROUPS IF NECESSARY ##
+    ##############################
+
+    try:
+        self.plate_groups
+    except AttributeError:
+        make_plate_groups(self)
+
+    ######################
+    ## HELPER FUNCTIONS ##
+    ######################
+
+    def __calc_95_ci(group):
+        '''Helper function to calculate 95% confidence intervals for a group of measurements.'''
+
+        values = group[self.response] 
+        n = len(values)
+        mean = values.mean()
+        sem = values.sem()
+        
+        # t-based 95% CI (appropriate for small sample sizes)
+        t_crit = stats.t.ppf(0.975, df = n-1)
+        ci_lower = mean - t_crit * sem
+        ci_upper = mean + t_crit * sem
+        ci_width = ci_upper - ci_lower
+        
+        return pd.Series({
+            "mean": mean,
+            "std": values.std(),
+            "n": n,
+            "ci_lower": ci_lower,
+            "ci_upper": ci_upper,
+            "ci_width": ci_width
+        })
+    
+    def __mean_range(group):
+        '''Helper function to return the range from the max to the minimum mean for a group of measurements.'''
+
+        # This will be the mean values for each concentration within the group
+        values = group[self.response]
+        mean_range = values.max() - values.min()
+        return(mean_range)
+
+    ###############################    
+    ## CREATE DIAGNOSTIC SUMMARY ##
+    ###############################
+
+    # Get control confidence intervals
+    control_ranges = self.plate_groups[self.plate_groups[self.concentration] == 0].groupby("bmdrc.Endpoint.ID").apply(__calc_95_ci)
+
+    # Get the mean range for each endpoint and merge with control confidence intervals
+    mean_ranges = self.plate_groups[self.plate_groups[self.concentration] != 0].groupby(["bmdrc.Endpoint.ID", self.concentration]).mean(self.response).reset_index().groupby("bmdrc.Endpoint.ID").apply(__mean_range).reset_index(name = "mean_range")
+
+    # Merge datasets together and determine whether to keep or remove based on whether the mean range is greater than the confidence interval width
+    NegControlRes = mean_ranges.merge(control_ranges, left_on = "bmdrc.Endpoint.ID", right_index = True).assign(Filter = lambda x: x["mean_range"] > x["ci_width"])
+    NegControlRes["Filter"] = ["Keep" if x else "Remove" for x in NegControlRes["Filter"]]
+
+    # Now make the summary counts for the table and diagnostic plot
+    NegCounts = NegControlRes["Filter"].value_counts().reset_index().rename(columns = {"count": "Count"})
+
+    # Save the counts
+    self.filter_negative_control_df = NegCounts
+    self.filter_negative_control_plot = __negative_control_plot_continuous(NegCounts)
+
+    #######################
+    ## RETURN DIAGNOSTIC ##
+    #######################
+
+    if apply == False:
+        if diagnostic_plot == False:
+            plt.close(self.filter_negative_control_plot)
+    
+    #############################
+    ## OTHERWISE, APPLY FILTER ##
+    #############################
+
+    else:
+
+        # Get bmdrc endpoint IDs to remove      
+        Endpoints = NegControlRes[NegControlRes["Filter"] == "Remove"]["bmdrc.Endpoint.ID"].tolist()
+
+        # Apply filter
+        self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(Endpoints), "bmdrc.filter"] = "Remove"
+        self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(Endpoints), "bmdrc.filter.reason"] =  \
+            self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(Endpoints), "bmdrc.filter.reason"] + " negative_control_filter"
 
 def __min_concentration_plot(min_concentration_df):
     '''

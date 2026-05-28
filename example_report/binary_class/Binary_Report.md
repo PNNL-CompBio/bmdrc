@@ -1,4 +1,4 @@
-# Benchmark Dose Curves
+# Binary_Report
 
 ## Input Data
 
@@ -20,8 +20,8 @@ New endpoints were made using existing endpoints using 'or', which means that if
 
 |New Endpoint Name|Combined Existing Endpoints|
 |---|---|
-|ANY24|MO24, DP24, SM24|
-|ANY|MO24, DP24, SM24, JAW|
+|ANY24|NC24, DP24, SM24|
+|ANY|NC24, DP24, SM24, JAW|
 
 #### **Set Invalid Wells to NA**
 
@@ -29,7 +29,7 @@ In some cases, like when a sample fish dies, many affected endpoints need to be 
 
 |Endpoint Name|Endpoint Value|Endpoint Exceptions|
 |---|---|---|
-|DNC|1|ANY|
+|DNC|1|ANY24|
 
 #### **Remove Invalid Endpoints**
 
@@ -39,7 +39,7 @@ The following endpoints were removed: DNC
 
 #### **Negative Control Filter**
 
-Plates with unusually high responses in negative control samples were filtered. The response threshold was set to **50.0**. See a summary below:
+Plates with unusually high responses in negative control samples were filtered. The response threshold was set to **50**. See a summary below:
 
 |Response|Number of Plates|Filter|
 |---|---|---|
@@ -47,8 +47,8 @@ Plates with unusually high responses in negative control samples were filtered. 
 |8.3333|1|Keep|
 |16.6667|11|Keep|
 |33.3333|4|Keep|
-|50.0|2|Filter|
-|66.6667|1|Filter|
+|50.0|2|Remove|
+|66.6667|1|Remove|
 
 And here is the plot:
 ![Filter Negative Control](./filter_negative_control.png)
@@ -59,8 +59,8 @@ Endpoints with too few concentration measurements (non-NA) to model are removed.
 
 |Number of Concentrations|Number of Endpoints|Filter|
 |---|---|---|
-|6|10|Keep|
-|2|1|Filter|
+|5|10|Keep|
+|1|1|Remove|
 
 And here is the plot:
 ![Filter Minimum Concentration](./filter_minimum_concentration.png)
@@ -89,7 +89,7 @@ And here is the plot:
 
 #### **Filter Summary**
 
-Overall, 11 endpoint and chemical combinations were considered. 8 were deemed eligible for modeling, and 3 were not based on filtering selections explained in the previous section.
+Overall, 11 endpoint and chemical combinations were considered. 8 were deemed eligible for modeling, and 3 were not based on filtering selections explained in the previous section. Of the 8 deemed eligible for modeling, 0 did not pass modeling checks.
 
 #### **Model Fitting Selections**
 
@@ -98,17 +98,32 @@ The following model fitting parameters were selected.
 |Parameter|Value|Parameter Description|
 |---|---|---|
 |Goodness of Fit Threshold|0.1|Minimum p-value for fitting a model. Default is 0.1|
-|Akaike Information Criterion (AIC) Threshold|2.0|Any models with an AIC within this value are considered an equitable fit. Default is 2.
+|Akaike Information Criterion (AIC) Threshold|2|Any models with an AIC within this value are considered an equitable fit. Default is 2.
 |Model Selection|lowest BMDL|Either return one model with the lowest BMDL, or combine equivalent fits|
 
 #### **Model Quality Summary**
 
-Below is a summary table of the number of endpoints with a high quality fit (a flag of 1, meaning that the BMD10 value is within the range of measured doses) and those that are not high quality (a flag of 0).
+Below is a summary table of the number of endpoints with a high quality fit and those with poor fit, as defined by each label below.
 
-|Flag|Count|
-|---|---|
-|0|0|
-|1|8|
+| Modeled Flag                    |   Count |
+|:--------------------------------|--------:|
+| Pass                            |       8 |
+| Fail - correlation score filter |       2 |
+| Fail - other filter             |       1 |
+
+And here is a summary delineating the good and moderate fits,based off of the following properties.
+
+| Flag | Number of Non-Control Concentrations | Spearman Correlation | Goodness of Fit | BMD50 | Model Convergence |
+| -- | -- | -- | -- | -- | -- |
+| Not Fit | < 3 | < 0.2 | < 0.1 | Not within concentration range | No Models Converged |
+| Moderate | >= 3 | 0.2 - 0.7 | >= 0.1 | Not within concentration range | At least 1 model converged |
+| Good | >= 5 | > 0.7 | >= 0.1 | Within concentration range | At least 1 model converged |
+
+| DataQC Flag   |   Count |
+|:--------------|--------:|
+| Good          |       5 |
+| Moderate      |       3 |
+| Not Fit       |       3 |
 
 #### **Output Modules**
 
