@@ -64,11 +64,13 @@ Example data for dichotomous, proportional, larval photomotor response, and cont
 
 A sample generated report for: 
 
-* binary (dichotomous)/proportional data can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/binary_class/Benchmark%20Dose%20Curves.md)
+* binary (dichotomous)/proportional data can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/binary_class/Binary_Report.md)
 
-* larval photomotor response (LPR) data can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/lpr_class/Benchmark%20Dose%20Curves.md)
+* larval photomotor response (LPR) data can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/lpr_class/LPR_Report.md)
 
-* reports for continuous data coming soon!
+* proportional data can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/proportional_class/Proportional_Report.md)
+
+* continuous data can be found [here](https://github.com/PNNL-CompBio/bmdrc/blob/main/example_report/continuous_class/Continuous_Report.md)
 
 # Logo
 
