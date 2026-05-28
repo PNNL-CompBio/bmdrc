@@ -1,30 +1,20 @@
-# LPR_Report
+# Proportional_Report
 
 ## Input Data
 
-A **lpr class** object was created. The following column names were set:
+A **proportional class** object was created. The following column names were set:
 
 |Parameter|Column Name|
 |---------|-----------|
 |Chemical|chemical.id|
-|Plate|plate.id|
-|Well|well|
-|Concentration|conc|
-|Time|variable|
-|Value|value|
-|Cycle Length|20.0|
-|Cycle Cooldown|10.0|
-|Starting Cycle|light|
+|Endpoint|endpoint|
+|Concentration|concentration|
+|Response|response|
 
 ## Pre-Processing
 
 #### **Combine & Make New Endpoints**
-New endpoints were made using existing endpoints using 'or', which means that if there is any endpoints with a '1', this new endpoint will also have a '1', regardless of how many zeroes there are in the other endpoints. See a summary table of added endpoints below:
-
-|New Endpoint Name|Combined Existing Endpoints|
-|---|---|
-|ANY_MOV|MOV1, MOV2, MOV3, MOV4|
-|ANY_AUC|AUC1, AUC2, AUC3, AUC4|
+This step was not conducted.
 
 #### **Set Invalid Wells to NA**
 
@@ -32,25 +22,13 @@ This step was not conducted.
 
 #### **Remove Invalid Endpoints**
 
-This step was not conducted.
+The following endpoints were removed: DNC
 
 ## Filtering
 
 #### **Negative Control Filter**
 
-Plates with unusually high responses in negative control samples were filtered. The response threshold was set to **50**. See a summary below:
-
-|Response|Number of Plates|Filter|
-|---|---|---|
-|0.0|18|Keep|
-|8.3333|3|Keep|
-|11.1111|4|Keep|
-|16.6667|2|Keep|
-|22.2222|1|Keep|
-|33.3333|2|Keep|
-
-And here is the plot:
-![Filter Negative Control](./filter_negative_control.png)
+This step was not conducted.
 
 #### **Minimum Concentration Filter**
 
@@ -58,7 +36,9 @@ Endpoints with too few concentration measurements (non-NA) to model are removed.
 
 |Number of Concentrations|Number of Endpoints|Filter|
 |---|---|---|
-|7|10|Keep|
+|14|1|Keep|
+|5|2|Keep|
+|1|1|Remove|
 
 And here is the plot:
 ![Filter Minimum Concentration](./filter_minimum_concentration.png)
@@ -75,10 +55,10 @@ Endpoints with little to no positive correlation with dose are unexpected and sh
 |-0.4|0.0|
 |-0.2|0.0|
 |0.0|0.0|
-|0.2|0.0|
+|0.2|1.0|
 |0.4|0.0|
-|0.6|5.0|
-|0.8|5.0|
+|0.6|0.0|
+|0.8|2.0|
 
 And here is the plot:
 ![Filter Correlation Score](./filter_correlation_score.png)
@@ -87,7 +67,7 @@ And here is the plot:
 
 #### **Filter Summary**
 
-Overall, 10 endpoint and chemical combinations were considered. 10 were deemed eligible for modeling, and 0 were not based on filtering selections explained in the previous section. Of the 10 deemed eligible for modeling, 0 did not pass modeling checks.
+Overall, 4 endpoint and chemical combinations were considered. 3 were deemed eligible for modeling, and 1 were not based on filtering selections explained in the previous section. Of the 3 deemed eligible for modeling, 2 did not pass modeling checks.
 
 #### **Model Fitting Selections**
 
@@ -103,9 +83,11 @@ The following model fitting parameters were selected.
 
 Below is a summary table of the number of endpoints with a high quality fit and those with poor fit, as defined by each label below.
 
-| Modeled Flag   |   Count |
-|:---------------|--------:|
-| Pass           |      10 |
+| Modeled Flag        |   Count |
+|:--------------------|--------:|
+| Fail - GOF check    |       2 |
+| Pass                |       1 |
+| Fail - other filter |       1 |
 
 And here is a summary delineating the good and moderate fits,based off of the following properties.
 
@@ -117,8 +99,8 @@ And here is a summary delineating the good and moderate fits,based off of the fo
 
 | DataQC Flag   |   Count |
 |:--------------|--------:|
-| Moderate      |       8 |
-| Good          |       2 |
+| Not Fit       |       3 |
+| Moderate      |       1 |
 
 #### **Output Modules**
 

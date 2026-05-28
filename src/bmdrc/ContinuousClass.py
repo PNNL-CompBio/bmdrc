@@ -6,6 +6,7 @@ from .preprocessing import remove_endpoints
 from .filtering import min_concentration, correlation_score, negative_control_continuous
 from .model_fitting_continuous import fit_continuous_models, gen_response_curve, fits_table
 from .output_modules_continuous import benchmark_dose, dose_table
+from .output_modules import report_binary
 
 __author__ = "David Degnan"
 
@@ -84,6 +85,10 @@ class ContinuousClass():
     @abstractmethod
     def output_fits_table(self, fixed_intercept, path = None):
         fits_table(self, fixed_intercept, path)
+
+    @abstractmethod
+    def report(self, out_folder, report_name = "Benchmark Dose Curves", file_type = ".md"):
+        report_binary(self, out_folder, report_name, file_type)
 
     #####################
     ## INIT DEFINITION ##

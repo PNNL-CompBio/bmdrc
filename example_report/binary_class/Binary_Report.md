@@ -105,11 +105,25 @@ The following model fitting parameters were selected.
 
 Below is a summary table of the number of endpoints with a high quality fit and those with poor fit, as defined by each label below.
 
-| DataQC_Flag                     |   count |
+| Modeled Flag                    |   Count |
 |:--------------------------------|--------:|
 | Pass                            |       8 |
 | Fail - correlation score filter |       2 |
 | Fail - other filter             |       1 |
+
+And here is a summary delineating the good and moderate fits,based off of the following properties.
+
+| Flag | Number of Non-Control Concentrations | Spearman Correlation | Goodness of Fit | BMD50 | Model Convergence |
+| -- | -- | -- | -- | -- | -- |
+| Not Fit | < 3 | < 0.2 | < 0.1 | Not within concentration range | No Models Converged |
+| Moderate | >= 3 | 0.2 - 0.7 | >= 0.1 | Not within concentration range | At least 1 model converged |
+| Good | >= 5 | > 0.7 | >= 0.1 | Within concentration range | At least 1 model converged |
+
+| DataQC Flag   |   Count |
+|:--------------|--------:|
+| Good          |       5 |
+| Moderate      |       3 |
+| Not Fit       |       3 |
 
 #### **Output Modules**
 

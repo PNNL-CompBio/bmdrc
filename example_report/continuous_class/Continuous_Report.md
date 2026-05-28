@@ -1,30 +1,20 @@
-# LPR_Report
+# Continuous_Report
 
 ## Input Data
 
-A **lpr class** object was created. The following column names were set:
+A **continuous class** object was created. The following column names were set:
 
 |Parameter|Column Name|
 |---------|-----------|
-|Chemical|chemical.id|
-|Plate|plate.id|
-|Well|well|
-|Concentration|conc|
-|Time|variable|
-|Value|value|
-|Cycle Length|20.0|
-|Cycle Cooldown|10.0|
-|Starting Cycle|light|
+|Chemical|Chemical ID|
+|Endpoint|Endpoint|
+|Concentration|Concentration_uM|
+|Response|Measurement|
 
 ## Pre-Processing
 
 #### **Combine & Make New Endpoints**
-New endpoints were made using existing endpoints using 'or', which means that if there is any endpoints with a '1', this new endpoint will also have a '1', regardless of how many zeroes there are in the other endpoints. See a summary table of added endpoints below:
-
-|New Endpoint Name|Combined Existing Endpoints|
-|---|---|
-|ANY_MOV|MOV1, MOV2, MOV3, MOV4|
-|ANY_AUC|AUC1, AUC2, AUC3, AUC4|
+This step was not conducted.
 
 #### **Set Invalid Wells to NA**
 
@@ -32,23 +22,18 @@ This step was not conducted.
 
 #### **Remove Invalid Endpoints**
 
-This step was not conducted.
+The following endpoints were removed: Endpoint5
 
 ## Filtering
 
 #### **Negative Control Filter**
 
-Plates with unusually high responses in negative control samples were filtered. The response threshold was set to **50**. See a summary below:
+Controls with unusually high responses in negative control samples were filtered. See a summary below:
 
-|Response|Number of Plates|Filter|
-|---|---|---|
-|0.0|18|Keep|
-|8.3333|3|Keep|
-|11.1111|4|Keep|
-|16.6667|2|Keep|
-|22.2222|1|Keep|
-|33.3333|2|Keep|
-
+|    | Filter   |   Count |
+|---:|:---------|--------:|
+|  0 | Keep     |      26 |
+|  1 | Remove   |       7 |
 And here is the plot:
 ![Filter Negative Control](./filter_negative_control.png)
 
@@ -58,7 +43,8 @@ Endpoints with too few concentration measurements (non-NA) to model are removed.
 
 |Number of Concentrations|Number of Endpoints|Filter|
 |---|---|---|
-|7|10|Keep|
+|4|32|Keep|
+|2|1|Remove|
 
 And here is the plot:
 ![Filter Minimum Concentration](./filter_minimum_concentration.png)
@@ -71,12 +57,12 @@ Endpoints with little to no positive correlation with dose are unexpected and sh
 |---|---|
 |-1.0|0.0|
 |-0.8|0.0|
-|-0.6|0.0|
-|-0.4|0.0|
-|-0.2|0.0|
-|0.0|0.0|
-|0.2|0.0|
-|0.4|0.0|
+|-0.6|3.0|
+|-0.4|3.0|
+|-0.2|2.0|
+|0.0|2.0|
+|0.2|8.0|
+|0.4|4.0|
 |0.6|5.0|
 |0.8|5.0|
 
@@ -87,7 +73,7 @@ And here is the plot:
 
 #### **Filter Summary**
 
-Overall, 10 endpoint and chemical combinations were considered. 10 were deemed eligible for modeling, and 0 were not based on filtering selections explained in the previous section. Of the 10 deemed eligible for modeling, 0 did not pass modeling checks.
+Overall, 33 endpoint and chemical combinations were considered. 22 were deemed eligible for modeling, and 11 were not based on filtering selections explained in the previous section. Of the 22 deemed eligible for modeling, 0 did not pass modeling checks.
 
 #### **Model Fitting Selections**
 
@@ -95,7 +81,6 @@ The following model fitting parameters were selected.
 
 |Parameter|Value|Parameter Description|
 |---|---|---|
-|Goodness of Fit Threshold|0.1|Minimum p-value for fitting a model. Default is 0.1|
 |Akaike Information Criterion (AIC) Threshold|2|Any models with an AIC within this value are considered an equitable fit. Default is 2.
 |Model Selection|lowest BMDL|Either return one model with the lowest BMDL, or combine equivalent fits|
 
@@ -103,9 +88,11 @@ The following model fitting parameters were selected.
 
 Below is a summary table of the number of endpoints with a high quality fit and those with poor fit, as defined by each label below.
 
-| Modeled Flag   |   Count |
-|:---------------|--------:|
-| Pass           |      10 |
+| Modeled Flag                    |   Count |
+|:--------------------------------|--------:|
+| Pass                            |      22 |
+| Fail - other filter             |       8 |
+| Fail - correlation score filter |       3 |
 
 And here is a summary delineating the good and moderate fits,based off of the following properties.
 
@@ -117,8 +104,8 @@ And here is a summary delineating the good and moderate fits,based off of the fo
 
 | DataQC Flag   |   Count |
 |:--------------|--------:|
-| Moderate      |       8 |
-| Good          |       2 |
+| Moderate      |      20 |
+| Not Fit       |      13 |
 
 #### **Output Modules**
 
