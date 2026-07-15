@@ -551,3 +551,5 @@ def correlation_score(self, score: float, apply: bool, diagnostic_plot: bool, di
         self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(removal_list), "bmdrc.filter"] = "Remove"
         self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(removal_list), "bmdrc.filter.reason"] = \
             self.plate_groups.loc[self.plate_groups["bmdrc.Endpoint.ID"].isin(removal_list), "bmdrc.filter.reason"] + " correlation_score_filter"
+
+        

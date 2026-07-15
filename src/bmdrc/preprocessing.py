@@ -118,7 +118,7 @@ def endpoint_combine(self, endpoint_dict: dict):
         sub_df = self.df[self.df[self.endpoint].isin(endpoints)].copy()
         sub_df[self.endpoint] = new_name
         sub_df = sub_df.groupby(by = [self.chemical, self.concentration, self.plate, self.well, self.endpoint], as_index = False).sum()
-        sub_df[self.value].values[sub_df[self.value] > 1] = 1 
+        sub_df.loc[sub_df[self.value] > 1, self.value] = 1
         return(sub_df)
 
     # Iterate through each dictionary entry 

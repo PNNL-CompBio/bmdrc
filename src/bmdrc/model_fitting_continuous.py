@@ -722,14 +722,15 @@ def _removed_endpoints_stats(self):
         # Make a data frame with all filtered endpoints called low quality and group it 
         low_quality = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"].groupby("bmdrc.Endpoint.ID")
 
-        # Calculate the area under the curve (AUC) and the min and max dose. Model, BMD10, BMDL, and BMD50 are all NA. 
+        # Calculate the area under the curve (AUC) and the min and max dose. Model, BMD10, BMDL, and BMD50 are all NA.
         bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df[self._response], x = df[self._concentration])).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
-        bmds_filtered["Min_Dose"] = low_quality[["bmdrc.Endpoint.ID", self._concentration]].min(self._concentration).reset_index()[self._concentration]
-        bmds_filtered["Max_Dose"] = low_quality[["bmdrc.Endpoint.ID", self._concentration]].max(self._concentration).reset_index()[self._concentration]
+        # added by AG
+        bmds_filtered["Min_Dose"] = low_quality[self._concentration].min().reset_index()[self._concentration]
+        bmds_filtered["Max_Dose"] = low_quality[self._concentration].max().reset_index()[self._concentration]
 
         # Calculate the total area
-        bmds_filtered["Max_Response"] = low_quality[["bmdrc.Endpoint.ID", self._response]].max(self._response).reset_index()[self._response]
+        bmds_filtered["Max_Response"] = low_quality[self._response].max().reset_index()[self._response]
         bmds_filtered["Area"] = (bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"]) * bmds_filtered["Max_Response"]
 
         # Normalize the AUC by the area
@@ -903,11 +904,12 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
 
     # Calculate Min_Dose, Max_Dose, AUC, and AUC_Norm
     bmds = dose_response_groups.apply(lambda df: np.trapezoid(df[self._response], x = df[self._concentration])).reset_index().rename(columns = {0: "AUC"})
-    bmds["Min_Dose"] = dose_response_groups[["bmdrc.Endpoint.ID", self._concentration]].min(self._concentration).reset_index()[self._concentration]
-    bmds["Max_Dose"] = dose_response_groups[["bmdrc.Endpoint.ID", self._concentration]].max(self._concentration).reset_index()[self._concentration]
+    #change by AG
+    bmds["Min_Dose"] = dose_response_groups[self._concentration].min().reset_index()[self._concentration]
+    bmds["Max_Dose"] = dose_response_groups[self._concentration].max().reset_index()[self._concentration]
     
     # Calculate the total area
-    bmds["Max_Response"] = dose_response_groups[["bmdrc.Endpoint.ID", self._response]].max(self._response).reset_index()[self._response]
+    bmds["Max_Response"] = dose_response_groups[self._response].max().reset_index()[self._response]
     bmds["Area"] = (bmds["Max_Dose"] - bmds["Min_Dose"]) * bmds["Max_Response"]
     
     # Normalize the AUC by the area
