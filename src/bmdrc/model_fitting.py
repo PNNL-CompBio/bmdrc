@@ -583,6 +583,35 @@ class Quantal_Linear_BMD(GenericLikelihoodModel):
 ## MODEL FITTING FUNCTIONS ##
 #############################
 
+def _calc_auc_with_median_fallback(df, concentration_col, response_col):
+    '''
+    Calculate AUC from observed points, and fall back to a median-concentration
+    line when direct integration is not possible.
+    '''
+
+    ordered = df[[concentration_col, response_col]].dropna().sort_values(concentration_col)
+
+    # Primary path: integrate all observed points when there is a non-zero dose span.
+    if len(ordered) >= 2 and ordered[concentration_col].nunique() > 1:
+        try:
+            return np.trapezoid(ordered[response_col].to_numpy(), x = ordered[concentration_col].to_numpy())
+        except:
+            pass
+
+    # Fallback path: connect median responses at each concentration.
+    median_curve = (
+        ordered
+        .groupby(concentration_col, as_index = False)[response_col]
+        .median()
+        .sort_values(concentration_col)
+    )
+
+    if len(median_curve) >= 2 and median_curve[concentration_col].nunique() > 1:
+        return np.trapezoid(median_curve[response_col].to_numpy(), x = median_curve[concentration_col].to_numpy())
+
+    # A line at one concentration has no area.
+    return 0.0
+
 def _removed_endpoints_stats(self):
     '''
     Accessory function to fit_the_models. 
@@ -606,11 +635,13 @@ def _removed_endpoints_stats(self):
         low_quality = low_quality.groupby("bmdrc.Endpoint.ID")
 
         # Calculate values 
-        bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
+        bmds_filtered = low_quality.apply(lambda df: _calc_auc_with_median_fallback(df, self.concentration, "frac.affected")).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
         bmds_filtered["Min_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].min(self.concentration).reset_index()[self.concentration], 4)
         bmds_filtered["Max_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].max(self.concentration).reset_index()[self.concentration], 4)
-        bmds_filtered["AUC_Norm"] = bmds_filtered["AUC"] / (bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"])
+        dose_span = bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"]
+        bmds_filtered["AUC_Norm"] = np.where(dose_span > 0, bmds_filtered["AUC"] / dose_span, np.nan)
+        bmds_filtered["AUC_Norm"] = bmds_filtered["AUC_Norm"].clip(lower = 0, upper = 1)
 
         # Order columns
         self.bmds_filtered = bmds_filtered[["bmdrc.Endpoint.ID", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm"]]
@@ -1024,9 +1055,12 @@ def _calc_fit_statistics(self):
         Data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == id]
         
         # Get the AUC, min, and max dose 
-        AUC = np.trapezoid(Data["bmdrc.frac.affected"], x = Data[self.concentration])
+        AUC = _calc_auc_with_median_fallback(Data, self.concentration, "bmdrc.frac.affected")
         Min_Dose = round(min(Data[self.concentration]), 4)
         Max_Dose = round(max(Data[self.concentration]), 4)
+        Dose_Span = Max_Dose - Min_Dose
+        AUC_Norm = (AUC / Dose_Span) if Dose_Span > 0 else np.nan
+        AUC_Norm = np.clip(AUC_Norm, 0, 1) if not np.isnan(AUC_Norm) else np.nan
 
         # Return results in a dictionary
         rowDict = {
@@ -1038,7 +1072,7 @@ def _calc_fit_statistics(self):
             "AUC": AUC,
             "Min_Dose": Min_Dose,
             "Max_Dose": Max_Dose,
-            "AUC_Norm": AUC / (Max_Dose - Min_Dose)
+            "AUC_Norm": AUC_Norm
         }
         BMDS_Model.append(rowDict)
 

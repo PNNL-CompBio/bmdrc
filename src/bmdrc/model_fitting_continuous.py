@@ -709,6 +709,27 @@ class WeiReg_Cont(GenReg_Cont):
 ## MODEL FITTING FUNCTIONS ##
 #############################
 
+def _calc_auc_median_line(df, concentration_col, response_col):
+    '''
+    Calculate AUC from a piecewise linear curve using the median response
+    at each concentration.
+    '''
+
+    median_curve = (
+        df[[concentration_col, response_col]]
+        .dropna()
+        .groupby(concentration_col, as_index = False)[response_col]
+        .median()
+        .sort_values(concentration_col)
+    )
+
+    if len(median_curve) == 0:
+        return np.nan
+    if len(median_curve) == 1:
+        return 0.0
+
+    return np.trapezoid(median_curve[response_col].to_numpy(), x = median_curve[concentration_col].to_numpy())
+
 def _removed_endpoints_stats(self):
     '''
     Accessory function to fit_the_models. 
@@ -723,7 +744,8 @@ def _removed_endpoints_stats(self):
         low_quality = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Remove"].groupby("bmdrc.Endpoint.ID")
 
         # Calculate the area under the curve (AUC) and the min and max dose. Model, BMD10, BMDL, and BMD50 are all NA.
-        bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df[self._response], x = df[self._concentration])).reset_index().rename(columns = {0: "AUC"})
+        # No curve fits are available for removed endpoints, so connect medians across concentrations.
+        bmds_filtered = low_quality.apply(lambda df: _calc_auc_median_line(df, self._concentration, self._response)).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
         # added by AG
         bmds_filtered["Min_Dose"] = low_quality[self._concentration].min().reset_index()[self._concentration]
@@ -734,7 +756,8 @@ def _removed_endpoints_stats(self):
         bmds_filtered["Area"] = (bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"]) * bmds_filtered["Max_Response"]
 
         # Normalize the AUC by the area
-        bmds_filtered["AUC_Norm"] = round(bmds_filtered["AUC"] / bmds_filtered["Area"], 8)
+        bmds_filtered["AUC_Norm"] = np.where(bmds_filtered["Area"] > 0, bmds_filtered["AUC"] / bmds_filtered["Area"], np.nan)
+        bmds_filtered["AUC_Norm"] = round(bmds_filtered["AUC_Norm"].clip(upper = 1), 8)
         bmds_filtered["AUC"] = round(bmds_filtered["AUC"], 4)
 
         # Order columns
@@ -836,7 +859,7 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
     #######################
 
     # Find the best model per dataset
-    best_model = {item: "" for item in self.aics_df["bmdrc.Endpoint.ID"].tolist()}
+    best_model = {item: None for item in self.aics_df["bmdrc.Endpoint.ID"].tolist()}
 
     # Keep a list of possible model selections
     poss_models = ["asymptotic", "exponential", "gompertz", "hill", "michaelis-mentin", "power", "weibull"]
@@ -849,8 +872,14 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
 
         # Step 1: Extract the best models based on AIC
         values = np.array(self.aics_df.iloc[row, 2:].to_list())
+        if np.isnan(values).all():
+            best_model[endpoint] = None
+            continue
         min_value = np.min([val for val in values if not np.isnan(val)])
-        model_choices = [poss_models[x] for x in range(len(values)) if not np.isnan(x) and (values[x] - min_value <= 2)] 
+        model_choices = [poss_models[x] for x in range(len(values)) if not np.isnan(values[x]) and (values[x] - min_value <= 2)] 
+        if len(model_choices) == 0:
+            best_model[endpoint] = None
+            continue
         if len(model_choices) == 1:
             best_model[endpoint] = model_choices[0]
 
@@ -882,6 +911,18 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
     
         # Identify the model
         model = best_model[endpoint]
+
+        # If no model could be selected, keep model stats as missing.
+        if model is None:
+            rowDict = {
+                "bmdrc.Endpoint.ID": endpoint,
+                "Model": "No model",
+                "BMD10": np.nan,
+                "BMDL": np.nan,
+                "BMD50": np.nan
+            }
+            BMDS_model.append(rowDict)
+            continue
     
         # Build a dictionary that holds the information per row
         rowDict = {
@@ -903,7 +944,22 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
     dose_response_groups = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"].groupby("bmdrc.Endpoint.ID")
 
     # Calculate Min_Dose, Max_Dose, AUC, and AUC_Norm
-    bmds = dose_response_groups.apply(lambda df: np.trapezoid(df[self._response], x = df[self._concentration])).reset_index().rename(columns = {0: "AUC"})
+    no_model_endpoints = set(bmds_stats[bmds_stats["Model"] == "No model"]["bmdrc.Endpoint.ID"].tolist())
+
+    def calc_endpoint_auc(df):
+        # For endpoints with no fitted curve, connect median responses across concentrations.
+        if df.name in no_model_endpoints:
+            return _calc_auc_median_line(df, self._concentration, self._response)
+
+        ordered = df[[self._concentration, self._response]].dropna().sort_values(self._concentration)
+        if len(ordered) == 0:
+            return np.nan
+        if len(ordered) == 1:
+            return 0.0
+
+        return np.trapezoid(ordered[self._response].to_numpy(), x = ordered[self._concentration].to_numpy())
+
+    bmds = dose_response_groups.apply(calc_endpoint_auc).reset_index().rename(columns = {0: "AUC"})
     #change by AG
     bmds["Min_Dose"] = dose_response_groups[self._concentration].min().reset_index()[self._concentration]
     bmds["Max_Dose"] = dose_response_groups[self._concentration].max().reset_index()[self._concentration]
@@ -913,7 +969,8 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
     bmds["Area"] = (bmds["Max_Dose"] - bmds["Min_Dose"]) * bmds["Max_Response"]
     
     # Normalize the AUC by the area
-    bmds["AUC_Norm"] = round(bmds["AUC"] / bmds["Area"], 8)
+    bmds["AUC_Norm"] = np.where(bmds["Area"] > 0, bmds["AUC"] / bmds["Area"], np.nan)
+    bmds["AUC_Norm"] = round(bmds["AUC_Norm"].clip(upper = 1), 8)
     bmds["AUC"] = round(bmds["AUC"], 4)
     
     # Save resulting dataframe
