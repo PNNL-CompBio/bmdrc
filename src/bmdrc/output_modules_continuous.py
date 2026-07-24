@@ -35,6 +35,9 @@ def benchmark_dose(self, path: str):
 
     # If modeled, the data passed all filters.
     BMDS["Modeled_Flag"] = "Pass"
+    BMDS.loc[BMDS["Model"].isna() | (BMDS["Model"] == "No model"), "Modeled_Flag"] = "Fail - no model fit"
+    if hasattr(self, "failed_bmdl_gt_bmd10"):
+        BMDS.loc[BMDS["bmdrc.Endpoint.ID"].isin(self.failed_bmdl_gt_bmd10), "Modeled_Flag"] = "Fail - poor fit (BMDL > BMD10)"
 
     # Add filtered data as needed
     if self.bmds_filtered is not None:

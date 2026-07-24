@@ -23,7 +23,7 @@ def benchmark_dose(self, path: str):
     
     '''
 
-    BMDS = self.bmds
+    BMDS = self.bmds.copy()
 
     # Add plate groups (needed for DataQC_Flag)
     try:
@@ -33,6 +33,12 @@ def benchmark_dose(self, path: str):
 
     # If modeled, the data passed all filters.
     BMDS["Modeled_Flag"] = "Pass"
+    BMDS.loc[BMDS["Model"].isna() | (BMDS["Model"] == "No model"), "Modeled_Flag"] = "Fail - no model fit"
+
+    # Poor fit rule: if BMDL exceeds BMD10, treat as no model fit.
+    poor_fit_mask = BMDS["BMDL"].notna() & BMDS["BMD10"].notna() & (BMDS["BMDL"] > BMDS["BMD10"])
+    BMDS.loc[poor_fit_mask, ["Model", "BMD10", "BMDL", "BMD50"]] = ["No model", np.nan, np.nan, np.nan]
+    BMDS.loc[poor_fit_mask, "Modeled_Flag"] = "Fail - poor fit (BMDL > BMD10)"
 
     # Add filtered data as needed
     if self.bmds_filtered is not None:

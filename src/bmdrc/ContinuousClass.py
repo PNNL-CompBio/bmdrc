@@ -83,7 +83,7 @@ class ContinuousClass():
         dose_table(self, path)
 
     @abstractmethod
-    def output_fits_table(self, fixed_intercept, path = None):
+    def output_fits_table(self, fixed_intercept = None, path = None):
         fits_table(self, fixed_intercept, path)
 
     @abstractmethod

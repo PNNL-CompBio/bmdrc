@@ -139,10 +139,18 @@ class Continuous_Model():
         -------
         a vector of values with `int_step` number of doses between measurements
         '''
+        numeric_doses = pd.to_numeric(pd.Series(doses), errors = "coerce").dropna().to_numpy(dtype = float)
+        if len(numeric_doses) == 0:
+            return np.array([0.0])
+
+        numeric_doses = np.unique(np.sort(numeric_doses))
+
         dose_samples = list()
-        for dose_index in range(len(doses) - 1):
-            dose_samples.extend(np.linspace(doses[dose_index],doses[dose_index + 1], int_steps).tolist())
-        return np.unique(dose_samples)
+        for dose_index in range(len(numeric_doses) - 1):
+            dose_samples.extend(np.linspace(numeric_doses[dose_index], numeric_doses[dose_index + 1], int_steps).tolist())
+
+        # Always include x = 0 so the curve starts at the fixed intercept.
+        return np.unique(np.append(dose_samples, 0.0))
 
     ## Attributes used by all models ##
 
@@ -247,6 +255,7 @@ class LinReg_Cont(Continuous_Model):
         curve = pd.DataFrame([dose_x_vals, self.model.predict(dose_x_vals.reshape(-1, 1))]).T
         curve.columns = ["Dose in uM", "Response"]
         curve["Response"] = curve["Response"] + self.fixed_intercept
+        curve.loc[np.isclose(curve["Dose in uM"], 0.0), "Response"] = self.fixed_intercept
         
         # Save the curve
         self.curve = curve
@@ -342,6 +351,7 @@ class PolyReg_Cont(Continuous_Model):
         curve = pd.DataFrame([dose_x_vals, self.model.predict(dose_x_vals.reshape(-1, 1))]).T
         curve.columns = ["Dose in uM", "Response"]
         curve["Response"] = curve["Response"] + self.fixed_intercept
+        curve.loc[np.isclose(curve["Dose in uM"], 0.0), "Response"] = self.fixed_intercept
         
         # Save the curve
         self.curve = curve
@@ -385,11 +395,20 @@ class GenReg_Cont(Continuous_Model):
         self.fixed_intercept = fixed_intercept
 
         # Extract out the values
-        x = self._toModel[self._concentration].to_numpy()
-        y = self._toModel[self._response].to_numpy()
+        numeric_data = self._toModel[[self._concentration, self._response]].apply(pd.to_numeric, errors = "coerce").dropna()
+        x = numeric_data[self._concentration].to_numpy(dtype = float)
+        y = numeric_data[self._response].to_numpy(dtype = float)
+        if len(x) < 2:
+            raise RuntimeError("Insufficient numeric points to fit model.")
         
         # Fit curve - there is no model object to keep. Keep predictions, params, and covariance matrix
-        params, cov = curve_fit(self.model_equation, x, y)
+        try:
+            params, cov = curve_fit(self.model_equation, x, y, maxfev = 20000)
+        except RuntimeError:
+            # Retry with simple positive initial values and a larger evaluation budget.
+            num_params = self.model_equation.__code__.co_argcount - 2
+            p0 = np.ones(num_params, dtype = float)
+            params, cov = curve_fit(self.model_equation, x, y, p0 = p0, maxfev = 100000)
         self.y_pred = self.model_equation(x, *params)
         self.params = params
         self.cov = cov
@@ -416,6 +435,7 @@ class GenReg_Cont(Continuous_Model):
 
         # Define curve and its columns
         curve = pd.DataFrame({"Dose in uM": dose_x_vals, "Response": [self.model_equation(the_x, *self.params) for the_x in dose_x_vals]})
+        curve.loc[np.isclose(curve["Dose in uM"], 0.0), "Response"] = self.fixed_intercept
         
         # Save the curve
         self.curve = curve
@@ -787,6 +807,7 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
     '''
 
     # Save parameters 
+    self.model_fitting_fixed_intercept = fixed_intercept
     self.model_fitting_aic_threshold = aic_threshold
     self.model_fitting_model_selection = model_selection
 
@@ -905,6 +926,7 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
     ## Collect fitting statistics for best model ##
 
     BMDS_model = []
+    poor_fit_endpoints = []
 
     # Collect statistics for the best model
     for endpoint in best_model:
@@ -923,14 +945,31 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
             }
             BMDS_model.append(rowDict)
             continue
+
+        bmd10 = self.bmd10s_df[self.bmd10s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
+        bmdl = self.bmdls_df[self.bmdls_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
+        bmd50 = self.bmd50s_df[self.bmd50s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
+
+        # Poor fit rule: BMDL should not exceed BMD10.
+        if (not np.isnan(bmdl)) and (not np.isnan(bmd10)) and (bmdl > bmd10):
+            poor_fit_endpoints.append(endpoint)
+            rowDict = {
+                "bmdrc.Endpoint.ID": endpoint,
+                "Model": "No model",
+                "BMD10": np.nan,
+                "BMDL": np.nan,
+                "BMD50": np.nan
+            }
+            BMDS_model.append(rowDict)
+            continue
     
         # Build a dictionary that holds the information per row
         rowDict = {
             "bmdrc.Endpoint.ID": endpoint,
             "Model": model,
-            "BMD10": self.bmd10s_df[self.bmd10s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
-            "BMDL": self.bmdls_df[self.bmdls_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
-            "BMD50": self.bmd50s_df[self.bmd50s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
+            "BMD10": bmd10,
+            "BMDL": bmdl,
+            "BMD50": bmd50
         }
     
         # Append the list of dictionaries
@@ -938,6 +977,7 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
     
     # Save half of the table
     bmds_stats = pd.DataFrame(BMDS_model)
+    self.failed_bmdl_gt_bmd10 = sorted(list(set(poor_fit_endpoints)))
 
     ## Collect other BMD metrics and merge ## 
 
@@ -1089,18 +1129,47 @@ def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str,
     fig_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_curve_plot"
     setattr(self, fig_name, _curve_plot(self, model_obj, chemical_name, endpoint_name, model, add_bmds))
 
-def fits_table(self, fixed_intercept: float, path: str):
+def fits_table(self, fixed_intercept: float = None, path: str = None):
     '''
     Calculate several points along a curve for visualization purposes
 
     Parameters
     ----------
+    fixed_intercept
+        The model intercept used to generate fitted response curves. Default is 0.
+
     path
         The path to write the curve fits file to
     
     '''
 
+    # Use the intercept from fit_models by default.
+    if fixed_intercept is None and hasattr(self, "model_fitting_fixed_intercept"):
+        fixed_intercept = self.model_fitting_fixed_intercept
+
+    # Backward compatibility: allow output_fits_table("fits.csv") style usage.
+    if path is None and (isinstance(fixed_intercept, str) or hasattr(fixed_intercept, "__fspath__")):
+        path = fixed_intercept
+        fixed_intercept = getattr(self, "model_fitting_fixed_intercept", 0)
+
+    if fixed_intercept is None:
+        fixed_intercept = getattr(self, "model_fitting_fixed_intercept", 0)
+
+    try:
+        fixed_intercept = float(fixed_intercept)
+    except (TypeError, ValueError):
+        raise ValueError("fixed_intercept must be numeric.")
+
     all_fits = []
+
+    def blank_fit_row(endpoint_id):
+        return pd.DataFrame({
+            "Chemical_ID": endpoint_id.split(" ")[0],
+            "End_Point": endpoint_id.split(" ")[1],
+            "X_vals": np.nan,
+            "Y_vals": np.nan,
+            "bmdrc.Endpoint.ID": endpoint_id
+        }, index = [0])
 
     # Iterate through everything that was fit
     for row in range(len(self.bmds)):
@@ -1108,6 +1177,11 @@ def fits_table(self, fixed_intercept: float, path: str):
         # Extract the endpoint ID, min dose, max dose, and model
         endpoint_id = self.bmds["bmdrc.Endpoint.ID"][row]
         model = self.bmds["Model"][row]
+
+        # No selected model means there is no fitted curve to report.
+        if pd.isna(model) or model == "No model":
+            all_fits.append(blank_fit_row(endpoint_id))
+            continue
 
         # Extract the corresponding dataset
         sub_data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == endpoint_id][[self.concentration, self.response]]
@@ -1127,10 +1201,17 @@ def fits_table(self, fixed_intercept: float, path: str):
             model_obj = PowReg_Cont(sub_data, self.concentration, self.response)
         elif model == "weibull":
             model_obj = WeiReg_Cont(sub_data, self.concentration, self.response)
+        else:
+            all_fits.append(blank_fit_row(endpoint_id))
+            continue
 
         # Fit the models
-        model_obj.fit(fixed_intercept = 100)
-        model_obj.response_curve(steps = 10)
+        try:
+            model_obj.fit(fixed_intercept = fixed_intercept)
+            model_obj.response_curve(steps = 10)
+        except Exception:
+            all_fits.append(blank_fit_row(endpoint_id))
+            continue
 
         # Here, we want to return the curve values
         curve = model_obj.curve
@@ -1146,20 +1227,13 @@ def fits_table(self, fixed_intercept: float, path: str):
         all_fits.append(curve)
         
     # Iterate through everything that was fit
-    for row in range(len(self.bmds_filtered)):
-        
-        # Extract the endpoint
-        endpoint_id = self.bmds_filtered["bmdrc.Endpoint.ID"][row]
+    if self.bmds_filtered is not None:
+        for row in range(len(self.bmds_filtered)):
+            
+            # Extract the endpoint
+            endpoint_id = self.bmds_filtered["bmdrc.Endpoint.ID"][row]
 
-        all_fits.append(
-            pd.DataFrame({
-                "Chemical_ID": endpoint_id.split(" ")[0],
-                "End_Point": endpoint_id.split(" ")[1],
-                "X_vals": np.nan,
-                "Y_vals": np.nan,
-                "bmdrc.Endpoint.ID": endpoint_id
-            }, index = [0])
-        )
+            all_fits.append(blank_fit_row(endpoint_id))
         
     # Make final table and store outputs
     Fits_Final = pd.concat(all_fits).reset_index(drop = True)

@@ -1328,8 +1328,9 @@ def fits_table(self, path: str):
     def calc_fits(ID):
         '''Define a helper function to fit points to a curve using an endpoint ID'''
         
-        # If the ID is not found in the model_results, then return blanks for x and y 
-        if ((ID in self.model_fits) == False):
+        # If the ID is not found in the model_results, or no model was selected,
+        # return blanks for x and y instead of curve points.
+        if ((ID in self.model_fits) == False) or (self.model_fits[ID][2] in [None, "No model"]):
             return(pd.DataFrame({
                 "Chemical_ID": ID.split(" ")[0],
                 "End_Point": ID.split(" ")[1],
