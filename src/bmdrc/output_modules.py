@@ -6,6 +6,57 @@ from bmdrc import filtering
 import os
 import json
 
+
+def _collapse_duplicate_endpoint_rows(df):
+    '''Collapse repeated endpoint rows into one row and combine fail reasons.'''
+
+    if df.empty:
+        return df
+
+    work = df.copy()
+    flag_priority = {
+        "Pass": 0,
+        "Fail - poor fit (BMDL > BMD10)": 1,
+        "Fail - no model fit": 2,
+        "Fail - GOF check": 3,
+        "Fail - correlation score filter": 4,
+        "Fail - other filter": 5,
+    }
+
+    work["_modeled_rank"] = work["Modeled_Flag"].map(flag_priority).fillna(99)
+    work["_orig_order"] = np.arange(len(work))
+    work = work.sort_values(["bmdrc.Endpoint.ID", "_modeled_rank", "_orig_order"])
+
+    fill_columns = ["Chemical_ID", "End_Point", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm"]
+
+    collapsed = []
+    for _, group in work.groupby("bmdrc.Endpoint.ID", sort = False):
+        row = group.iloc[0].copy()
+
+        unique_flags = [flag for flag in group["Modeled_Flag"].dropna().tolist() if flag != "Pass"]
+        if len(unique_flags) == 0:
+            row["Modeled_Flag"] = "Pass"
+        else:
+            # Preserve priority order while removing duplicates.
+            seen = set()
+            ordered_flags = []
+            for flag in unique_flags:
+                if flag not in seen:
+                    ordered_flags.append(flag)
+                    seen.add(flag)
+            row["Modeled_Flag"] = "; ".join(ordered_flags)
+
+        for col in fill_columns:
+            if col in group.columns and pd.isna(row[col]):
+                non_na_values = group[col].dropna()
+                if len(non_na_values) > 0:
+                    row[col] = non_na_values.iloc[0]
+
+        collapsed.append(row)
+
+    collapsed_df = pd.DataFrame(collapsed)
+    return collapsed_df.drop(columns = ["_modeled_rank", "_orig_order"], errors = "ignore")
+
 def benchmark_dose(self, path: str):
     '''
     Calculate high level of statistics of benchmark dose fits. The Data_QC flag has is determined as follows:
@@ -159,6 +210,9 @@ def benchmark_dose(self, path: str):
 
     BMDS_Final = BMDS_Final[["Chemical_ID", "End_Point", "Model", "BMD10", "BMDL", "BMD50", "AUC", "Min_Dose", "Max_Dose", "AUC_Norm", 
                 "Modeled_Flag", "DataQC_Flag", "BMD10_Flag", "BMD50_Flag", "NumConc", "Spearman_Correlation", "bmdrc.Endpoint.ID"]]
+
+    # Ensure each endpoint appears once, even if it failed through multiple pathways.
+    BMDS_Final = _collapse_duplicate_endpoint_rows(BMDS_Final)
     
     # Arrange by analysis flag
     BMDS_Final = BMDS_Final.sort_values("DataQC_Flag", ascending = True)

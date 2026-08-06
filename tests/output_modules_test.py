@@ -164,6 +164,24 @@ def test_benchmark_dose_rebuilds_plate_groups(tmp_path):
     obj.output_benchmark_dose(path=str(tmp_path / "bmd.csv"))
     assert hasattr(obj, "plate_groups")
 
+
+def test_benchmark_dose_collapses_duplicate_fail_rows(tmp_path):
+    obj = _binary(apply_filter=True)
+    assert obj.bmds_filtered is not None
+
+    # Force overlap: same endpoint appears in both filtered and GOF-fail tables.
+    duplicated_endpoint = obj.bmds_filtered["bmdrc.Endpoint.ID"].iloc[0]
+    obj.failed_pvalue_test = [duplicated_endpoint]
+
+    obj.output_benchmark_dose(path=str(tmp_path / "bmd.csv"))
+    written = pd.read_csv(str(tmp_path / "bmd.csv"))
+    matching_rows = written[written["bmdrc.Endpoint.ID"] == duplicated_endpoint]
+
+    assert len(matching_rows) == 1
+    modeled_flag = matching_rows["Modeled_Flag"].iloc[0]
+    assert "Fail - GOF check" in modeled_flag
+    assert ("Fail - other filter" in modeled_flag) or ("Fail - correlation score filter" in modeled_flag)
+
 # Test to cover functions "this step was not conducted"
 def test_report_step_was_not_conducted(tmp_path):
         obj = BinaryClass.BinaryClass(
