@@ -59,8 +59,8 @@ class ProportionalClass():
     ###########################
 
     @abstractmethod
-    def fit_models(self, gof_threshold = 0.1, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False):
-        fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode)
+    def fit_models(self, gof_threshold = 0.1, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False, parallelize = True, n_cores = None):
+        fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode, parallelize, n_cores)
 
     @abstractmethod
     def response_curve(self, chemical_name, endpoint_name, model, steps = 10):

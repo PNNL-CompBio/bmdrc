@@ -270,8 +270,8 @@ def test_proportional_wrapper_methods_call_imported_functions(monkeypatch):
     def fake_correlation_score(self, score, apply, diagnostic_plot, direction):
         called.append(("correlation_score", score, apply, diagnostic_plot, direction))
 
-    def fake_fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode):
-        called.append(("fit_the_models", gof_threshold, aic_threshold, model_selection, diagnostic_mode))
+    def fake_fit_the_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode, parallelize, n_cores):
+        called.append(("fit_the_models", gof_threshold, aic_threshold, model_selection, diagnostic_mode, parallelize, n_cores))
 
     def fake_gen_response_curve(self, chemical_name, endpoint_name, model, steps):
         called.append(("gen_response_curve", chemical_name, endpoint_name, model, steps))
@@ -306,7 +306,7 @@ def test_proportional_wrapper_methods_call_imported_functions(monkeypatch):
     Prop_Test.filter_correlation_score(score = 0.5, apply = True, diagnostic_plot = False, direction = "above")
 
     # Ensure the model-fitting wrappers delegate to the imported fitting helpers.
-    Prop_Test.fit_models(gof_threshold = 0.2, aic_threshold = 3, model_selection = "lowest BMDL", diagnostic_mode = True)
+    Prop_Test.fit_models(gof_threshold = 0.2, aic_threshold = 3, model_selection = "lowest BMDL", diagnostic_mode = True, parallelize = False, n_cores = 2)
     Prop_Test.response_curve("Chem1", "EP1", "logistic", 12)
 
     # Ensure the output wrappers delegate to the imported output helpers.
@@ -319,7 +319,7 @@ def test_proportional_wrapper_methods_call_imported_functions(monkeypatch):
         ("remove_endpoints", ["EP1"]),
         ("min_concentration", 2, True, True),
         ("correlation_score", 0.5, True, False, "above"),
-        ("fit_the_models", 0.2, 3, "lowest BMDL", True),
+        ("fit_the_models", 0.2, 3, "lowest BMDL", True, False, 2),
         ("gen_response_curve", "Chem1", "EP1", "logistic", 12),
         ("benchmark_dose", "benchmark.csv"),
         ("dose_table", "dose.csv"),

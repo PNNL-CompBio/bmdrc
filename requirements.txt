@@ -8,3 +8,4 @@ matplotlib>=3.10.7
 scikit-learn>=1.7.2
 uncertainties
 tabulate
+futures

@@ -3,6 +3,8 @@ import pandas as pd
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import re
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from astropy import stats as astrostats
 from statsmodels.base.model import GenericLikelihoodModel
 
@@ -17,6 +19,10 @@ warnings.filterwarnings('ignore')
 
 BMR = 0.1
 BMR_50 = 0.5
+DEFAULT_MAXITER = 300
+DEFAULT_MAXFUN = 1000
+BMDL_MAX_ITERATIONS = 40
+BMDL_TOLERANCE_THRESHOLD = 1e-3
 
 ## LOGISTIC CLASSES & FUNCTIONS ##
 
@@ -46,7 +52,7 @@ class Logistic(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         if start_params is None:
             mu_0 = self.endog[:,0].flatten().mean()
             s_0  = np.sqrt(3)*np.std(self.endog[:,0].flatten())/np.pi
@@ -80,7 +86,7 @@ class Logistic_BMD(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def profile_ll_fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def profile_ll_fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         return super(Logistic_BMD, self).fit(start_params = start_params, maxiter = maxiter, maxfun = maxfun, method = 'lbfgs', bounds = [[None,None],[start_params[1],start_params[1]]],  disp = 0, **kwds)
 
 
@@ -113,7 +119,7 @@ class Gamma(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         if start_params is None:
             g_0 = 0.1
             beta_0 = self.endog[:,0].flatten().mean()/self.endog[:,0].flatten().var()
@@ -144,7 +150,7 @@ class Gamma_BMD(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def profile_ll_fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def profile_ll_fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         return super(Gamma_BMD, self).fit(start_params = start_params, maxiter = maxiter, maxfun = maxfun, method = 'lbfgs', bounds = [[1e-5,0.99],[0.2, 18],[start_params[2],start_params[2]]], disp = 0, **kwds)
 
 
@@ -177,7 +183,7 @@ class Weibull(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
 
         if start_params is None:
             g_0 = 0.1
@@ -228,7 +234,7 @@ class Weibull_BMD(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def profile_ll_fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def profile_ll_fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         return super(Weibull_BMD, self).fit(start_params = start_params, maxiter = maxiter, maxfun = maxfun, method = 'lbfgs', bounds = [[1e-5,0.99],[1e-5,None],[start_params[2],start_params[2]]], disp = 0,**kwds)
 
 
@@ -263,7 +269,7 @@ class Log_Logistic(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         if start_params is None:
             doses = self.endog[:,0].copy().flatten()
             nonzero_doses = doses[1:]
@@ -298,7 +304,7 @@ class Log_Logistic_BMD(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def profile_ll_fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def profile_ll_fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         return super(Log_Logistic_BMD, self).fit(start_params = start_params, maxiter = maxiter, maxfun = maxfun, method = 'lbfgs', bounds = [[1e-5,0.99],[start_params[1]/2,start_params[1]*2],[start_params[2],start_params[2]]], disp = 0,**kwds)
 
 
@@ -329,7 +335,7 @@ class Probit(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         if start_params is None:
             dose = self.endog[:,0].flatten()
             num_affected = self.endog[:,1].flatten()
@@ -364,7 +370,7 @@ class Probit_BMD(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def profile_ll_fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def profile_ll_fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         return super(Probit_BMD, self).fit(start_params = start_params, maxiter = maxiter, maxfun = maxfun, method = 'lbfgs', bounds = [[None,None],[start_params[1],start_params[1]]], disp = 0,**kwds)
 
 
@@ -397,7 +403,7 @@ class Log_Probit(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         if start_params is None:
             g_0 = 0.1
 
@@ -441,7 +447,7 @@ class Log_Probit_BMD(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def profile_ll_fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def profile_ll_fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         return super(Log_Probit_BMD, self).fit(start_params = start_params, maxiter = maxiter, maxfun = maxfun, method = 'lbfgs', bounds = [[1e-9,0.99],[None,None],[start_params[2],start_params[2]]],  disp = 0, **kwds)
 
 
@@ -473,7 +479,7 @@ class Multistage_2(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         if start_params is None:
             g_0 = 0.05
 
@@ -516,7 +522,7 @@ class Multistage_2_BMD(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def profile_ll_fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def profile_ll_fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         return super(Multistage_2_BMD, self).fit(start_params = start_params, maxiter = maxiter, maxfun = maxfun, method = 'lbfgs', bounds = [[1e-9,0.99],[1e-9,None],[start_params[2],start_params[2]]], disp = 0, **kwds)
 
 
@@ -547,7 +553,7 @@ class Quantal_Linear(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         if start_params is None:
             g_0 = 0.1
             beta_0 = 1/((self.endog[:,0].flatten().mean()))/np.log(2)
@@ -575,7 +581,7 @@ class Quantal_Linear_BMD(GenericLikelihoodModel):
                   + ((num_total - num_affected) * (np.log(1 - probs)))
         return -log_lhood
 
-    def profile_ll_fit(self, start_params = None, maxiter = 10000, maxfun = 5000, **kwds):
+    def profile_ll_fit(self, start_params = None, maxiter = DEFAULT_MAXITER, maxfun = DEFAULT_MAXFUN, **kwds):
         return super(Quantal_Linear_BMD, self).fit(start_params = start_params, maxiter = maxiter, maxfun = maxfun, method = 'lbfgs', bounds = [[1e-5,0.99],[start_params[1],start_params[1]]], disp = 0, **kwds)
 
 
@@ -651,7 +657,27 @@ def _removed_endpoints_stats(self):
         self.bmds_filtered = None
 
 
-def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode):
+def _resolve_num_cores(n_cores):
+    '''Resolve requested CPU count, defaulting to half available cores.'''
+
+    available_cores = os.cpu_count() or 1
+    default_cores = max(1, available_cores // 2)
+
+    if n_cores is None:
+        return default_cores
+
+    try:
+        requested_cores = int(n_cores)
+    except:
+        return default_cores
+
+    if requested_cores < 1:
+        return default_cores
+
+    return min(requested_cores, available_cores)
+
+
+def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode, parallelize, n_cores):
     '''
     Accessory function to fit_the_models. 
     This function fits all non-filtered endpoints to the EPA recommended 
@@ -662,6 +688,14 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
     self.model_fitting_gof_threshold = gof_threshold
     self.model_fitting_aic_threshold = aic_threshold
     self.model_fitting_model_selection = model_selection
+    self.model_fitting_parallelize = parallelize
+
+    resolved_cores = _resolve_num_cores(n_cores)
+    self.model_fitting_n_cores = resolved_cores
+
+    # Clear stale failed endpoint records from previous runs.
+    if hasattr(self, "failed_pvalue_test"):
+        delattr(self, "failed_pvalue_test")
 
     # Add fraction affected to plate groups 
     if hasattr(self, "value"):
@@ -681,7 +715,7 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
     # Create a dictionary to hold all model results
     model_results = {}
 
-    for endpoint in to_fit:
+    def fit_endpoint(endpoint):
 
         if (diagnostic_mode):
             print("......fitting models for " + endpoint)
@@ -731,9 +765,10 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
 
             # Run the model
             model = modelfun(sub_data[[self.concentration, "bmdrc.num.affected", "bmdrc.num.nonna"]].astype('float').copy())
+            fit_res = model.fit()
 
             # Get the model parameters
-            model_params = model.fit().params
+            model_params = fit_res.params
 
             # Get the model's fitted values
             model_fittedvals = fittedfun(sub_data[self.concentration], model_params)
@@ -742,21 +777,13 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
             model_pval = calc_p_value(model_fittedvals, model_params)
 
             # Get the AIC
-            AIC = -2 * model.fit().llf + (2 * len(model_params))
+            AIC = -2 * fit_res.llf + (2 * len(model_params))
 
             # Get the BMD10
             BMD10 = Calculate_BMD(Model = modelname, params = model_params)
 
-            # Get the BMDL
-            BMDL = Calculate_BMDL(self.concentration,    
-                                  Model = modelname,          
-                                  FittedModelObj = model,   
-                                  Data = sub_data, 
-                                  BMD10 = BMD10, 
-                                  params = model_params)
-
-            # Return a list
-            return([model, model_params, model_fittedvals, model_pval, AIC, modelname, BMD10, BMDL])
+            # Defer BMDL calculation until model screening is complete.
+            return([model, model_params, model_fittedvals, model_pval, AIC, modelname, BMD10, np.nan, fit_res.llf])
 
         # Run regression models in a dictionary
         models = {
@@ -807,22 +834,28 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
         for key in models.keys():
             bmdls[key] = models[key][7]   
 
+        def calculate_bmdl_for_model(model_key):
+            model_info = models[model_key]
+            bmdl = Calculate_BMDL(self.concentration,
+                                  Model = model_info[5],
+                                  FittedModelObj = model_info[0],
+                                  Data = sub_data,
+                                  BMD10 = model_info[6],
+                                  params = model_info[1],
+                                  fitted_llf = model_info[8])
+            model_info[7] = bmdl
+            bmdls[model_key] = bmdl
+            return bmdl
+
         # Define a function to stop the iteration if no potential models remain
         def check_remaining_models(potential_models): 
-            
             # Fit no models if none remain after each step
-            if (len(potential_models) == 0):
-                if hasattr(self, "failed_pvalue_test") == False:
-                    self.failed_pvalue_test = [endpoint]
-                else:
-                    self.failed_pvalue_test.append(endpoint)
-                    self.failed_pvalue_test = list(set(self.failed_pvalue_test))
-                return True
+            return len(potential_models) == 0
 
         # Step One: Keep models within the goodness of fit threshold
         potential_models = [key for key in p_values.keys() if np.isnan(p_values[key]) == False and p_values[key] >= gof_threshold] 
         if (check_remaining_models(potential_models)):
-            continue
+            return endpoint, None, True
 
         # Step Two: Keep models within the AIC threshold. First, toss all aics that are np.nan, union with potential models, and then proceed.
         aics2 = [key for key in aics.keys() if np.isnan(aics[key]) == False]
@@ -833,17 +866,53 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
 
         # Step Three: Select smallest BMDL, if applicable
         if (check_remaining_models(potential_models)):
-            continue
+            return endpoint, None, True
         if (len(potential_models) == 1):
-            model_results[endpoint] = [p_values, models[potential_models[0]], potential_models[0], aics, bmd10s, bmdls]
+            selected_model = potential_models[0]
+            calculate_bmdl_for_model(selected_model)
+            return endpoint, [p_values, models[selected_model], selected_model, aics, bmd10s, bmdls], False
         else:
+            for model_key in potential_models:
+                calculate_bmdl_for_model(model_key)
+
             bmdls2 = [x for x in potential_models if np.isnan(bmdls[x]) == False]
             if len(bmdls2) == 0:
                 selected_model = aics2[np.argmin(aics2_data)]
             else:
-                bmdls2_data = [bmdls[x] for x in potential_models if np.isnan(bmdls[x]) == False]
+                bmdls2_data = [bmdls[x] for x in bmdls2]
                 selected_model = bmdls2[np.argmin(bmdls2_data)]
-            model_results[endpoint] = [p_values, models[selected_model], selected_model, aics, bmd10s, bmdls]
+            return endpoint, [p_values, models[selected_model], selected_model, aics, bmd10s, bmdls], False
+
+    fit_results = {}
+    failed_endpoints = set()
+
+    should_parallelize = parallelize and len(to_fit) > 1 and resolved_cores > 1
+
+    if should_parallelize:
+        max_workers = min(resolved_cores, len(to_fit))
+        with ThreadPoolExecutor(max_workers = max_workers) as executor:
+            futures = {executor.submit(fit_endpoint, endpoint): endpoint for endpoint in to_fit}
+            for future in as_completed(futures):
+                endpoint, endpoint_result, failed = future.result()
+                if failed:
+                    failed_endpoints.add(endpoint)
+                elif endpoint_result is not None:
+                    fit_results[endpoint] = endpoint_result
+    else:
+        for endpoint in to_fit:
+            endpoint, endpoint_result, failed = fit_endpoint(endpoint)
+            if failed:
+                failed_endpoints.add(endpoint)
+            elif endpoint_result is not None:
+                fit_results[endpoint] = endpoint_result
+
+    # Preserve original endpoint order for deterministic output tables.
+    for endpoint in to_fit:
+        if endpoint in fit_results:
+            model_results[endpoint] = fit_results[endpoint]
+
+    if len(failed_endpoints) > 0:
+        self.failed_pvalue_test = sorted(failed_endpoints)
 
     self.model_fits = model_results
 
@@ -888,7 +957,7 @@ def Calculate_BMD(Model, params, BenchmarkResponse = 0.1):
 ## CALCULATE BENCHMARK DOSE LOWER 95% CONFIDENCE LIMIT ##
 #########################################################
         
-def Calculate_BMDL(conc_variable, Model, FittedModelObj, Data, BMD10, params, MaxIterations = 100, ToleranceThreshold = 1e-4):
+def Calculate_BMDL(conc_variable, Model, FittedModelObj, Data, BMD10, params, MaxIterations = BMDL_MAX_ITERATIONS, ToleranceThreshold = BMDL_TOLERANCE_THRESHOLD, fitted_llf = None):
     '''Calculate the benchmark dose lower confidence limit'''
 
     # Reformat data
@@ -902,8 +971,10 @@ def Calculate_BMDL(conc_variable, Model, FittedModelObj, Data, BMD10, params, Ma
     Iteration_Count = 0
     Tolerance = 1
 
-    # Set a LLV Threhold
-    BMDL_LLV_Thresh = FittedModelObj.fit().llf - stats.chi2.ppf(0.9, 1)/2
+    # Set a LLV threshold. Reuse an existing LLF when available to avoid refitting.
+    if fitted_llf is None:
+        fitted_llf = FittedModelObj.fit().llf
+    BMDL_LLV_Thresh = fitted_llf - stats.chi2.ppf(0.9, 1)/2
 
     # Start a while condition loop
     while ((Tolerance > ToleranceThreshold) and (Iteration_Count <= MaxIterations)):
@@ -1048,8 +1119,9 @@ def _calc_fit_statistics(self):
         # Get the parameters 
         params = model_results[id][1][1]
 
-        # Get the BMD10 value 
-        BMD10 = Calculate_BMD(Model, params, 0.1)
+        # Reuse selected-model BMD values computed during model selection.
+        BMD10 = model_results[id][1][6]
+        BMDL = model_results[id][1][7]
 
         # Get the dose response data
         Data = self.plate_groups[self.plate_groups["bmdrc.Endpoint.ID"] == id]
@@ -1067,7 +1139,7 @@ def _calc_fit_statistics(self):
             "bmdrc.Endpoint.ID": id,
             "Model": Model,
             "BMD10": BMD10, 
-            "BMDL": Calculate_BMDL(self.concentration, Model, FittedModelObj, Data, BMD10, params),
+            "BMDL": BMDL,
             "BMD50": Calculate_BMD(Model, params, 0.5),
             "AUC": AUC,
             "Min_Dose": Min_Dose,
@@ -1079,7 +1151,7 @@ def _calc_fit_statistics(self):
     self.bmds = pd.DataFrame(BMDS_Model)
 
 
-def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selection: str, diagnostic_mode: bool):
+def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selection: str, diagnostic_mode: bool, parallelize: bool = True, n_cores: int = None):
     '''
     Fit the EPA recommended models to your dataset. 
 
@@ -1096,6 +1168,12 @@ def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selec
 
     diagnostic_mode
         A boolean to indicate whether diagnostic messages should be printed. Default is False
+
+    parallelize
+        A boolean to fit endpoints in parallel. Default is True.
+
+    n_cores
+        An integer for the number of cores to use when parallelize is True. Default is half of available cores.
     '''
 
     ##################
@@ -1111,6 +1189,17 @@ def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selec
     if (model_selection != "lowest BMDL"):
         print("Currently only 'lowest BMDL' is supported for model_selection.")
         model_selection = "lowest BMDL"
+
+    # parallelize must be True/False
+    if not isinstance(parallelize, bool):
+        print("parallelize must be either True or False.")
+        parallelize = True
+
+    # n_cores must be a positive integer when provided
+    if n_cores is not None:
+        if isinstance(n_cores, int) == False or n_cores < 1:
+            print("n_cores must be a positive integer. Defaulting to half available cores.")
+            n_cores = None
 
     ##############################
     ## MAKE GROUPS IF NECESSARY ##
@@ -1130,7 +1219,7 @@ def fit_the_models(self, gof_threshold: float, aic_threshold: float, model_selec
     _removed_endpoints_stats(self)
 
     # 2. Fit models for endpoints that are not filtered out
-    _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode)
+    _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, diagnostic_mode, parallelize, n_cores)
 
     # 3. Calculate statistics
     _calc_fit_statistics(self)
