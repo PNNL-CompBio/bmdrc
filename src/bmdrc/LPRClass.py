@@ -6,7 +6,6 @@ import pandas as pd
 
 from .BinaryClass import BinaryClass, DataClass
 
-
 class LPRClass(DataClass):
     """
     Generates a bmdrc object from larval photomotor response data, which must be in long format.
@@ -481,6 +480,8 @@ class LPRClass(DataClass):
             mov_values[
                 [self._chemical, self._plate, self._concentration, self._well, "Cycle", "MOV"]
             ]
+            .drop_duplicates()
+            .reset_index(drop = True)
             .pivot(
                 index=[self._chemical, self._plate, self._concentration, self._well],
                 columns="Cycle",
@@ -492,7 +493,10 @@ class LPRClass(DataClass):
         # Convert each MOV column from continuous to dichotomous (0/1)
         for x in range(self._max_cycle):
             value = "MOV" + str(x + 1)
-            mov_process[value] = self.to_dichotomous(mov_process, value)
+            try:
+                mov_process[value] = self.to_dichotomous(mov_process, value)
+            except KeyError:
+                pass
 
         return mov_process
 
