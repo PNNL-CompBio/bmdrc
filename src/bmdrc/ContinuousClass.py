@@ -62,13 +62,13 @@ class ContinuousClass():
     ###########################
 
     @abstractmethod
-    def fit_models(self, fixed_intercept = 0, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False):
-        fit_continuous_models(self, fixed_intercept, aic_threshold, model_selection, diagnostic_mode)
+    def fit_models(self, fixed_intercept = 0, aic_threshold = 2, model_selection = "lowest BMDL", diagnostic_mode = False, maxfev = 10000):
+        fit_continuous_models(self, fixed_intercept, aic_threshold, model_selection, diagnostic_mode, maxfev)
 
     
     @abstractmethod
-    def response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds = False, steps = 10):
-        gen_response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds, steps)
+    def response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds = False, steps = 10, maxfev = None):
+        gen_response_curve(self, chemical_name, endpoint_name, model, fixed_intercept, add_bmds, steps, maxfev)
 
     ####################
     ## OUTPUT MODULES ##
@@ -83,8 +83,8 @@ class ContinuousClass():
         dose_table(self, path)
 
     @abstractmethod
-    def output_fits_table(self, fixed_intercept, path = None):
-        fits_table(self, fixed_intercept, path)
+    def output_fits_table(self, fixed_intercept, path = None, maxfev = None):
+        fits_table(self, fixed_intercept, path, maxfev)
 
     @abstractmethod
     def report(self, out_folder, report_name = "Benchmark Dose Curves", file_type = ".md"):
@@ -181,5 +181,6 @@ class ContinuousClass():
         if responsename in self.unacceptable:
             raise Exception(responsename + " is not a permitted name. Please rename this column.")
         self._df[responsename] = pd.to_numeric(self._df[responsename])
+        self._df = self._df.dropna(subset = [responsename]).reset_index(drop = True)
         self._response = responsename
 

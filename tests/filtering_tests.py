@@ -3,6 +3,7 @@ import numpy as np
 
 import pytest
 from bmdrc import BinaryClass
+from bmdrc import ContinuousClass
 
 ## How to calculate coverage (from within main package directory): 
 # coverage run --source=bmdrc -m pytest -x tests/*
@@ -39,6 +40,26 @@ def test_negative_control_filter():
 
     # Ensure the stored parameter is correct 
     assert Long_Test.filter_negative_control_thresh == 50
+
+def test_continuous_negative_control_filter():
+    test = ContinuousClass.ContinuousClass(
+        df = pd.DataFrame({
+            "chemical": ["A"] * 6,
+            "concentration": [0, 0, 1, 1, 2, 2],
+            "endpoint": ["E"] * 6,
+            "response": [0, 2, 1, 3, 8, 10],
+        }),
+        chemical = "chemical",
+        concentration = "concentration",
+        endpoint = "endpoint",
+        response = "response",
+    )
+
+    test.filter_negative_control(diagnostic_plot = False)
+
+    assert test.filter_negative_control_df.to_dict("records") == [
+        {"Filter": "Remove", "Count": 1}
+    ]
 
 # Test the minimum concentration filter
 def test_minimum_concentration_filter():

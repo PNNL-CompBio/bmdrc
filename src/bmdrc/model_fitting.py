@@ -608,8 +608,8 @@ def _removed_endpoints_stats(self):
         # Calculate values 
         bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
-        bmds_filtered["Min_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].min(self.concentration).reset_index()[self.concentration], 4)
-        bmds_filtered["Max_Dose"] = round(low_quality[["bmdrc.Endpoint.ID", self.concentration]].max(self.concentration).reset_index()[self.concentration], 4)
+        bmds_filtered["Min_Dose"] = round(low_quality[[self.concentration]].min().reset_index()[self.concentration], 4)
+        bmds_filtered["Max_Dose"] = round(low_quality[[self.concentration]].max().reset_index()[self.concentration], 4)
         bmds_filtered["AUC_Norm"] = bmds_filtered["AUC"] / (bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"])
 
         # Order columns
@@ -793,9 +793,12 @@ def _select_and_run_models(self, gof_threshold, aic_threshold, model_selection, 
         if (check_remaining_models(potential_models)):
             continue
 
-        # Step Two: Keep models within the AIC threshold. First, toss all aics that are np.nan, union with potential models, and then proceed.
-        aics2 = [key for key in aics.keys() if np.isnan(aics[key]) == False]
-        aics2 = [x for x in aics2 if x in potential_models]
+        # Step Two: Keep models with finite AIC values within the AIC threshold.
+        aics2 = [key for key in potential_models if np.isfinite(aics[key])]
+        if not aics2:
+            check_remaining_models(aics2)
+            continue
+
         aics2_data = [aics[x] for x in aics2]
         aics2_pos = [x for x in range(len(aics2)) if np.abs(aics2_data[x] - min(aics2_data)) < aic_threshold]
         potential_models = [aics2[x] for x in aics2_pos]

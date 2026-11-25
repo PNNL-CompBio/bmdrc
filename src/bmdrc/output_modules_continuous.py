@@ -34,7 +34,7 @@ def benchmark_dose(self, path: str):
     BMDS = self.bmds
 
     # If modeled, the data passed all filters.
-    BMDS["Modeled_Flag"] = "Pass"
+    BMDS["Modeled_Flag"] = np.where(BMDS["Model"] == "No model converged", "Fail - no model converged", "Pass")
 
     # Add filtered data as needed
     if self.bmds_filtered is not None:
@@ -149,19 +149,15 @@ def dose_table(self, path: str):
     '''
         
     # Extract the specific dosages that were measured with their additional information
-    dose_table = self.df[[self.chemical, self.endpoint, self.concentration, self.response]].groupby([self.chemical, self.endpoint, self.concentration]).agg(["mean", "sem", "size"]).reset_index()
+    # Use "count" (non-NA responses) rather than "size" so degrees of freedom match the mean and sem
+    dose_table = self.df[[self.chemical, self.endpoint, self.concentration, self.response]].groupby([self.chemical, self.endpoint, self.concentration]).agg(["mean", "sem", "count"]).reset_index()
     dose_table.columns = [self.chemical, self.endpoint, self.concentration, "mean", "sem", "size"]
     dose_table["dof"] = dose_table["size"] - 1
     
     # Add 95% confidence intervals
-    dose_table["Low"] = np.nan
-    dose_table["High"] = np.nan
-    
-    # Add confidence intervals
-    for row in range(len(dose_table)):
-        CI = stats.t.interval(0.95, dose_table["dof"][row], loc = dose_table["mean"][row], scale = dose_table["sem"][row])
-        dose_table["Low"][row] = np.round(CI[0], 8) 
-        dose_table["High"][row] = np.round(CI[1], 8) 
+    low, high = stats.t.interval(0.95, dose_table["dof"], loc = dose_table["mean"], scale = dose_table["sem"])
+    dose_table["Low"] = np.round(low, 8)
+    dose_table["High"] = np.round(high, 8)
     
     # Select columns
     dose_table = dose_table[[self.chemical, self.endpoint, self.concentration, "mean", "Low", "High"]]

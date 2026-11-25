@@ -251,7 +251,15 @@ def negative_control_continuous(self, apply: bool, diagnostic_plot: bool):
     control_ranges = self.plate_groups[self.plate_groups[self.concentration] == 0].groupby("bmdrc.Endpoint.ID").apply(__calc_95_ci)
 
     # Get the mean range for each endpoint and merge with control confidence intervals
-    mean_ranges = self.plate_groups[self.plate_groups[self.concentration] != 0].groupby(["bmdrc.Endpoint.ID", self.concentration]).mean(self.response).reset_index().groupby("bmdrc.Endpoint.ID").apply(__mean_range).reset_index(name = "mean_range")
+    mean_ranges = (
+        self.plate_groups[self.plate_groups[self.concentration] != 0]
+        .groupby(["bmdrc.Endpoint.ID", self.concentration])[[self.response]]
+        .mean()
+        .reset_index()
+        .groupby("bmdrc.Endpoint.ID")
+        .apply(__mean_range)
+        .reset_index(name = "mean_range")
+    )
 
     # Merge datasets together and determine whether to keep or remove based on whether the mean range is greater than the confidence interval width
     NegControlRes = mean_ranges.merge(control_ranges, left_on = "bmdrc.Endpoint.ID", right_index = True).assign(Filter = lambda x: x["mean_range"] > x["ci_width"])

@@ -99,7 +99,7 @@ class Continuous_Model():
         '''
 
         # Build a statistical summary data.frame to calculate confidence intervals. SEM - standard error measurement (sd / sqrt(n))
-        stats_sum = self._toModel[[self._concentration, self._response]].groupby(self._concentration).agg(["mean", "sem", "size"]).reset_index()
+        stats_sum = self._toModel[[self._concentration, self._response]].groupby(self._concentration).agg(["mean", "sem", "count"]).reset_index()
         stats_sum.columns = [self._concentration, "mean", "sem", "dof"]
 
         # Subtract one for the DoF
@@ -367,7 +367,7 @@ class PolyReg_Cont(Continuous_Model):
 ## General Non-Linear Regression ## 
 class GenReg_Cont(Continuous_Model):
 
-    def fit(self, fixed_intercept: float = 0):
+    def fit(self, fixed_intercept: float = 0, maxfev: int = 10000):
         '''
         Fit a regression model, calculate GOF and AIC
 
@@ -375,6 +375,9 @@ class GenReg_Cont(Continuous_Model):
         ----------
         fixed_intercept
             a value that the the modeled line must run through
+
+        maxfev
+            the maximum number of function evaluations the optimizer may use before giving up
         
         Returns
         ------
@@ -389,7 +392,7 @@ class GenReg_Cont(Continuous_Model):
         y = self._toModel[self._response].to_numpy()
         
         # Fit curve - there is no model object to keep. Keep predictions, params, and covariance matrix
-        params, cov = curve_fit(self.model_equation, x, y)
+        params, cov = curve_fit(self.model_equation, x, y, maxfev = maxfev)
         self.y_pred = self.model_equation(x, *params)
         self.params = params
         self.cov = cov
@@ -725,11 +728,11 @@ def _removed_endpoints_stats(self):
         # Calculate the area under the curve (AUC) and the min and max dose. Model, BMD10, BMDL, and BMD50 are all NA. 
         bmds_filtered = low_quality.apply(lambda df: np.trapezoid(df[self._response], x = df[self._concentration])).reset_index().rename(columns = {0: "AUC"})
         bmds_filtered[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
-        bmds_filtered["Min_Dose"] = low_quality[["bmdrc.Endpoint.ID", self._concentration]].min(self._concentration).reset_index()[self._concentration]
-        bmds_filtered["Max_Dose"] = low_quality[["bmdrc.Endpoint.ID", self._concentration]].max(self._concentration).reset_index()[self._concentration]
+        bmds_filtered["Min_Dose"] = low_quality[[self._concentration]].min().reset_index()[self._concentration]
+        bmds_filtered["Max_Dose"] = low_quality[[self._concentration]].max().reset_index()[self._concentration]
 
         # Calculate the total area
-        bmds_filtered["Max_Response"] = low_quality[["bmdrc.Endpoint.ID", self._response]].max(self._response).reset_index()[self._response]
+        bmds_filtered["Max_Response"] = low_quality[[self._response]].max().reset_index()[self._response]
         bmds_filtered["Area"] = (bmds_filtered["Max_Dose"] - bmds_filtered["Min_Dose"]) * bmds_filtered["Max_Response"]
 
         # Normalize the AUC by the area
@@ -743,7 +746,7 @@ def _removed_endpoints_stats(self):
 
         self.bmds_filtered = None
 
-def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, model_selection: str, diagnostic_mode: bool):
+def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, model_selection: str, diagnostic_mode: bool, maxfev: int = 10000):
     '''
     Fit continuous monotonic models to your dataset. 
 
@@ -760,11 +763,15 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
 
     diagnostic_mode
         A boolean to indicate whether diagnostic messages should be printed. Default is False
+
+    maxfev
+        The maximum number of function evaluations per nonlinear model fit. Increase if models fail to converge. Default is 10000.
     '''
 
     # Save parameters 
     self.model_fitting_aic_threshold = aic_threshold
     self.model_fitting_model_selection = model_selection
+    self.model_fitting_maxfev = maxfev
 
     # Pull dose_response
     dose_response = self.plate_groups[self.plate_groups["bmdrc.filter"] == "Keep"]
@@ -800,7 +807,10 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
             '''Wrapper function for fitting models and calculating statistics'''
             try:
                 fit_mod = mod_type(sub_data, self._concentration, self._response)
-                fit_mod.fit(fixed_intercept = fixed_intercept)
+                if mod_type in (LinReg_Cont, PolyReg_Cont):
+                    fit_mod.fit(fixed_intercept = fixed_intercept)
+                else:
+                    fit_mod.fit(fixed_intercept = fixed_intercept, maxfev = maxfev)
                 return [fit_mod.aic, fit_mod.calc_bmdl(), fit_mod.predict_x(fit_mod.get_response_level(10)), fit_mod.predict_x(fit_mod.get_response_level(50))]
             except:
                 return [np.nan, np.nan, np.nan, np.nan]
@@ -848,8 +858,17 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
 
         # Step 1: Extract the best models based on AIC
         values = np.array(self.aics_df.iloc[row, 2:].to_list())
-        min_value = np.min([val for val in values if not np.isnan(val)])
-        model_choices = [poss_models[x] for x in range(len(values)) if not np.isnan(x) and (values[x] - min_value <= 2)] 
+        valid_aics = np.isfinite(values)
+        if not valid_aics.any():
+            best_model[endpoint] = None
+            continue
+
+        min_value = values[valid_aics].min()
+        model_choices = [
+            poss_models[x]
+            for x in range(len(values))
+            if valid_aics[x] and values[x] - min_value <= 2
+        ]
         if len(model_choices) == 1:
             best_model[endpoint] = model_choices[0]
 
@@ -881,15 +900,24 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
     
         # Identify the model
         model = best_model[endpoint]
-    
-        # Build a dictionary that holds the information per row
-        rowDict = {
-            "bmdrc.Endpoint.ID": endpoint,
-            "Model": model,
-            "BMD10": self.bmd10s_df[self.bmd10s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
-            "BMDL": self.bmdls_df[self.bmdls_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
-            "BMD50": self.bmd50s_df[self.bmd50s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
-        }
+
+        if model is None:
+            rowDict = {
+                "bmdrc.Endpoint.ID": endpoint,
+                "Model": "No model converged",
+                "BMD10": np.nan,
+                "BMDL": np.nan,
+                "BMD50": np.nan,
+            }
+        else:
+            # Build a dictionary that holds the information per row
+            rowDict = {
+                "bmdrc.Endpoint.ID": endpoint,
+                "Model": model,
+                "BMD10": self.bmd10s_df[self.bmd10s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
+                "BMDL": self.bmdls_df[self.bmdls_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0],
+                "BMD50": self.bmd50s_df[self.bmd50s_df["bmdrc.Endpoint.ID"] == endpoint][model].values[0]
+            }
     
         # Append the list of dictionaries
         BMDS_model.append(rowDict)
@@ -903,11 +931,11 @@ def fit_continuous_models(self, fixed_intercept: float, aic_threshold: float, mo
 
     # Calculate Min_Dose, Max_Dose, AUC, and AUC_Norm
     bmds = dose_response_groups.apply(lambda df: np.trapezoid(df[self._response], x = df[self._concentration])).reset_index().rename(columns = {0: "AUC"})
-    bmds["Min_Dose"] = dose_response_groups[["bmdrc.Endpoint.ID", self._concentration]].min(self._concentration).reset_index()[self._concentration]
-    bmds["Max_Dose"] = dose_response_groups[["bmdrc.Endpoint.ID", self._concentration]].max(self._concentration).reset_index()[self._concentration]
+    bmds["Min_Dose"] = dose_response_groups[[self._concentration]].min().reset_index()[self._concentration]
+    bmds["Max_Dose"] = dose_response_groups[[self._concentration]].max().reset_index()[self._concentration]
     
     # Calculate the total area
-    bmds["Max_Response"] = dose_response_groups[["bmdrc.Endpoint.ID", self._response]].max(self._response).reset_index()[self._response]
+    bmds["Max_Response"] = dose_response_groups[[self._response]].max().reset_index()[self._response]
     bmds["Area"] = (bmds["Max_Dose"] - bmds["Min_Dose"]) * bmds["Max_Response"]
     
     # Normalize the AUC by the area
@@ -949,7 +977,7 @@ def _curve_plot(self, model_obj, chemical_name, endpoint_name, model, add_bmds):
 
     return(fig)
 
-def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str, fixed_intercept: float, add_bmds: bool, steps: int):
+def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str, fixed_intercept: float, add_bmds: bool, steps: int, maxfev: int = None):
     '''
     Generate the x and y coordinates of a specific curve and a plot, which are stored as object attributes
 
@@ -968,11 +996,18 @@ def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str,
     steps
         An integer for the number of doses between the minimum and maximum dose. Default is 10. 
 
+    maxfev
+        The maximum number of function evaluations for the fit. Default (None) uses the value from fit_models, or 10000.
+
     '''
 
     ################
     ## RUN CHECKS ##
     ################
+
+    # Resolve maxfev, defaulting to the value used in fit_models
+    if maxfev is None:
+        maxfev = getattr(self, "model_fitting_maxfev", 10000)
 
     # Check that chemical_name is an acceptable choice
     if (chemical_name in (self.df[self.chemical].unique().tolist())) == False:
@@ -1011,7 +1046,7 @@ def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str,
         model_obj = WeiReg_Cont(toModel = the_subset, concentration = self._concentration, response = self._response)
 
     # Run necessary functions
-    model_obj.fit(fixed_intercept = fixed_intercept)
+    model_obj.fit(fixed_intercept = fixed_intercept, maxfev = maxfev)
     model_obj.response_curve(steps = steps)
     model_obj.calc_conf_interv()
 
@@ -1030,16 +1065,26 @@ def gen_response_curve(self, chemical_name: str, endpoint_name: str, model: str,
     fig_name = "_" + clean_up(str(chemical_name)) + "_" + clean_up(str(endpoint_name)) + "_" + clean_up(str(model)) + "_curve_plot"
     setattr(self, fig_name, _curve_plot(self, model_obj, chemical_name, endpoint_name, model, add_bmds))
 
-def fits_table(self, fixed_intercept: float, path: str):
+def fits_table(self, fixed_intercept: float, path: str, maxfev: int = None):
     '''
     Calculate several points along a curve for visualization purposes
 
     Parameters
     ----------
+    fixed_intercept
+        The value an intercept must pass through. Should match the value used in fit_models.
+
     path
         The path to write the curve fits file to
+
+    maxfev
+        The maximum number of function evaluations per fit. Default (None) uses the value from fit_models, or 10000.
     
     '''
+
+    # Resolve maxfev, defaulting to the value used in fit_models
+    if maxfev is None:
+        maxfev = getattr(self, "model_fitting_maxfev", 10000)
 
     all_fits = []
 
@@ -1068,9 +1113,19 @@ def fits_table(self, fixed_intercept: float, path: str):
             model_obj = PowReg_Cont(sub_data, self.concentration, self.response)
         elif model == "weibull":
             model_obj = WeiReg_Cont(sub_data, self.concentration, self.response)
+        else:
+            # No model converged for this endpoint, so there is no curve to draw
+            all_fits.append(pd.DataFrame({
+                "Chemical_ID": endpoint_id.split(" ")[0],
+                "End_Point": endpoint_id.split(" ")[1],
+                "X_vals": np.nan,
+                "Y_vals": np.nan,
+                "bmdrc.Endpoint.ID": endpoint_id
+            }, index = [0]))
+            continue
 
         # Fit the models
-        model_obj.fit(fixed_intercept = 100)
+        model_obj.fit(fixed_intercept = fixed_intercept, maxfev = maxfev)
         model_obj.response_curve(steps = 10)
 
         # Here, we want to return the curve values
@@ -1086,8 +1141,8 @@ def fits_table(self, fixed_intercept: float, path: str):
         # Append the curve
         all_fits.append(curve)
         
-    # Iterate through everything that was fit
-    for row in range(len(self.bmds_filtered)):
+    # Iterate through everything that was filtered out (bmds_filtered is None if nothing was removed)
+    for row in range(len(self.bmds_filtered) if self.bmds_filtered is not None else 0):
         
         # Extract the endpoint
         endpoint_id = self.bmds_filtered["bmdrc.Endpoint.ID"][row]

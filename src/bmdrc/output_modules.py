@@ -75,8 +75,8 @@ def benchmark_dose(self, path: str):
         # Calculate values 
         pvalue_bmds = pvalue_fails.apply(lambda df: np.trapezoid(df["frac.affected"], x = df[self.concentration])).reset_index().rename(columns = {0: "AUC"})
         pvalue_bmds[["Model", "BMD10", "BMDL", "BMD50"]] = np.nan
-        pvalue_bmds["Min_Dose"] = round(pvalue_fails[["bmdrc.Endpoint.ID", self.concentration]].min(self.concentration).reset_index()[self.concentration], 4)
-        pvalue_bmds["Max_Dose"] = round(pvalue_fails[["bmdrc.Endpoint.ID", self.concentration]].max(self.concentration).reset_index()[self.concentration], 4)
+        pvalue_bmds["Min_Dose"] = round(pvalue_fails[[self.concentration]].min().reset_index()[self.concentration], 4)
+        pvalue_bmds["Max_Dose"] = round(pvalue_fails[[self.concentration]].max().reset_index()[self.concentration], 4)
         pvalue_bmds["AUC_Norm"] = pvalue_bmds["AUC"] / (pvalue_bmds["Max_Dose"] - pvalue_bmds["Min_Dose"])
 
         # Order the outputs correctly and add QC flag
